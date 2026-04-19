@@ -148,6 +148,11 @@ let votedOffices = new Set();
 
 onValue(ref(db,'state'), snap => { dbState = snap.val() || {}; render(); });
 
+// Kivetítőn másodpercenkénti frissítés az időmérőhöz
+if (isProjector) {
+  setInterval(() => { if (!dbState.vote1?.status || dbState.vote1?.status==='inactive') render(); }, 5000);
+}
+
 const esc = s => String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
 const R = html => { document.getElementById('root').innerHTML = html; };
 const wrap = content => `<div class="wrap"><div class="card">${content}</div></div>`;
@@ -159,16 +164,21 @@ function projUrl()  { return baseUrl()+'?token='+TOKEN_VOTER+'&mode=kivetito'; }
 function adminUrl() { return baseUrl()+'?token='+TOKEN_ADMIN+'&mode=admin'; }
 
 // ── Holtverseny detektálás ──
-function detectTieV1(results, currentWinners) {
-  // Ha már megvan a 11, de a 11. és 12. egyenlő → holtverseny
+// Visszaadja: { tied: [nevek], spotsNeeded: hány hely ütközik } vagy null
+function detectTieV1(results) {
   const sorted = Object.entries(results).sort((a,b)=>b[1]-a[1]);
   if (sorted.length < 12) return null;
+  // Hány biztos nyertes van (akik felett nincs holtverseny)?
+  // A 11. hely pontszáma
   const score11 = sorted[10][1];
   const score12 = sorted[11][1];
   if (score11 !== score12) return null;
-  // Kik kapták ugyanazt a pontot mint a 11.?
-  const tiedNames = sorted.filter(([,v])=>v===score11).map(([n])=>n);
-  return tiedNames;
+  // Hányan kapták a 11. hely pontszámát?
+  const tiedGroup = sorted.filter(([,v])=>v===score11).map(([n])=>n);
+  // Hány "szabad" hely van a holtversenyes csoportnak?
+  const definiteWinners = sorted.filter(([,v])=>v>score11).length;
+  const spotsNeeded = 11 - definiteWinners; // ennyi győztest kell kivenni a pótszavazásból
+  return { tied: tiedGroup, spotsNeeded };
 }
 
 function detectTieOffice(results) {
@@ -280,14 +290,14 @@ function tabControl(s) {
     const res = s.vote1?.results || {};
     const winners = s.vote1?.winners || [];
     if (v1s === 'active') {
-      const tied = detectTieV1(res, winners);
-      if (tied) {
+      const tieInfo = detectTieV1(res);
+      if (tieInfo) {
         tieWarnV1 = `<div class="warn-box">
           <h3>⚠️ Holtverseny a 11. helyen!</h3>
-          <p>Egyenlő szavazattal: <b>${tied.join(', ')}</b><br>Lezárás előtt döntsd el hogyan kezeled.</p>
+          <p>Egyenlő szavazattal: <b>${tieInfo.tied.join(', ')}</b><br>Szükséges helyek: <b>${tieInfo.spotsNeeded}</b><br>Lezárás előtt döntsd el hogyan kezeled.</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-warning btn-sm" onclick="closeV1(true)">Lezárás pótszavazással</button>
-            <button class="btn btn-outline btn-sm" onclick="closeV1(false)">Lezárás így (első az győz)</button>
+            <button class="btn btn-outline btn-sm" onclick="closeV1(false)">Lezárás így (sorrend dönt)</button>
           </div>
         </div>`;
       }
@@ -351,8 +361,8 @@ function tabResults(s) {
     const sorted = Object.entries(s.vote1.results).sort((a,b)=>b[1]-a[1]);
     const max = Math.max(...sorted.map(e=>e[1]),1);
     const ws = new Set(s.vote1.winners||[]);
-    const tied = s.vote1?.status==='active' ? detectTieV1(s.vote1.results, s.vote1.winners||[]) : null;
-    const tiedSet = new Set(tied||[]);
+    const tieInfo1 = s.vote1?.status==='active' ? detectTieV1(s.vote1.results) : null;
+    const tiedSet = new Set(tieInfo1?.tied||[]);
     h += `<h2 style="margin-bottom:12px">1. kör</h2>`;
     if (ws.size) h += `<div class="winner-box">Nyertesek: ${[...ws].join(', ')}</div>`;
     sorted.slice(0,20).forEach(([n,c],i) => {
@@ -475,10 +485,12 @@ function renderVoter1() {
   } else if (status==='closed') {
     body=`<div class="info" style="text-align:center;padding:2rem">A szavazás lezárult.</div>`;
   } else if (status==='runoff') {
+    const spotsNeeded=dbState.vote1?.runoffSpotsNeeded||1;
     const checked=Object.keys(localVotes1).filter(k=>localVotes1[k]);
-    body=`<div class="warn-box"><h3>🔄 Pótszavazás</h3><p>Holtverseny miatt pótszavazás. Válassz egyet az alábbi jelöltek közül.</p></div>
+    body=`<div class="warn-box"><h3>🔄 Pótszavazás</h3><p>Holtverseny miatt pótszavazás. Válassz <b>${spotsNeeded}</b> jelöltet az alábbiak közül.</p></div>
+      <div class="counter">Kiválasztva: <span>${checked.length}</span> / ${spotsNeeded}</div>
       <div class="cand-grid">
-        ${cands.map(c=>{const ch=!!localVotes1[c],dis=!ch&&checked.length>=1;
+        ${cands.map(c=>{const ch=!!localVotes1[c],dis=!ch&&checked.length>=spotsNeeded;
           return `<label class="cand-item${ch?' checked':''}${dis?' disabled':''}">
             <input type="checkbox" ${ch?'checked':''} ${dis?'disabled':''} onchange="tv1('${esc(c)}',this.checked)">${c}
           </label>`;
@@ -578,12 +590,23 @@ function renderProjector() {
   const qrSideHtml = `<div class="proj-qr-side"><div class="proj-qr-item"><div id="${qrId}"></div><div class="proj-qr-label">${qrLabel}</div></div></div>`;
 
   if (!anyVote) {
+    const entryLog = s.vote1?.entryLog || {};
+    const entryCount = Object.keys(entryLog).length;
+    const lastTs = entryCount > 0 ? Math.max(...Object.values(entryLog).map(e=>e.ts||0)) : null;
+    const now = Date.now();
+    const secAgo = lastTs ? Math.round((now - lastTs)/1000) : null;
+    const timeStr = secAgo === null ? '' : secAgo < 60 ? `${secAgo} másodperce` : `${Math.round(secAgo/60)} perce`;
     R(`<div class="proj-wrap">
       <h1 style="font-size:36px;text-align:center;margin-bottom:2rem">${title}</h1>
       <div class="proj-waiting">
         <div style="text-align:center">
           <div class="proj-qr-big"><div id="pqr1"></div></div>
           <div style="margin-top:10px;font-size:16px;color:#6b7280">1. kör szavazók</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:48px;font-weight:700;color:#1a56db">${entryCount}</div>
+          <div style="font-size:18px;color:#6b7280">fő csatlakozott</div>
+          ${lastTs ? `<div style="font-size:14px;color:#9ca3af;margin-top:6px">Utolsó belépés: <b>${timeStr}</b></div>` : ''}
         </div>
         <div style="font-size:18px;color:#9ca3af">Várakozás a szavazás kezdetére...</div>
       </div>
@@ -622,15 +645,19 @@ function renderProjector() {
     const sorted=Object.entries(res).sort((a,b)=>b[1]-a[1]);
     const max=Math.max(...sorted.map(e=>e[1]),1);
     const win=s.vote2?.officeWinners?.[lastClosed];
-    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${lastClosed} — Eredmény</div>
+    // Teljes jelöltek listája (eredeti nominees + runoff nominees)
+    const allNoms=[...new Set([...(s.vote2?.nominees?.[lastClosed]||[]),...(s.vote2?.runoffNominees?.[lastClosed]||[])])];
+    const allResults=allNoms.map(n=>[n,res[n]||0]).sort((a,b)=>b[1]-a[1]);
+    const allMax=Math.max(...allResults.map(e=>e[1]),1);
+    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${lastClosed} — Végeredmény</div>
       ${win?`<div style="font-size:32px;font-weight:700;color:#057a55;margin-bottom:1.5rem">✓ Megválasztva: ${win}</div>`:''}
-      ${sorted.map(([n,c])=>{const w=win===n;return `<div style="margin-bottom:14px">
+      ${allResults.map(([n,c])=>{const w=win===n;return `<div style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:20px;font-weight:${w?'700':'400'};color:${w?'#057a55':'inherit'}">${w?'✓ ':''}${n}</span>
           <span style="font-size:20px;font-weight:700;color:${w?'#057a55':'#1a56db'}">${c}</span>
         </div>
         <div style="background:#e5e7eb;border-radius:4px;height:24px;overflow:hidden">
-          <div style="height:100%;background:${w?'#057a55':'#1a56db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+          <div style="height:100%;background:${w?'#057a55':'#1a56db'};border-radius:4px;width:${Math.round(c/allMax*100)}%;transition:width .5s"></div>
         </div>
       </div>`;}).join('')}`;
   } else {
@@ -642,10 +669,13 @@ function renderProjector() {
       : Object.entries(v1res).sort((a,b)=>b[1]-a[1]).slice(0,15);
     const max1 = Math.max(...displayList1.map(e=>e[1]), 1);
     const ws = new Set(s.vote1?.winners || []);
-    const tied = v1s==='active' ? detectTieV1(v1res, s.vote1?.winners||[]) : null;
-    const tiedSet = new Set(tied || []);
+    const tieInfoP = v1s==='active' ? detectTieV1(v1res) : null;
+    const tiedSet = new Set(tieInfoP?.tied || []);
     results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">1. kör — Tagválasztás${isRunoff1?' (Pótszavazás)':''}</div>
-      <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">Leadott szavazat: ${s.vote1?.voterCount||0}</div>
+      <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">
+        Szavazott: <b style="color:#1a56db">${s.vote1?.voterCount||0}</b>
+        ${Object.keys(s.vote1?.entryLog||{}).length > 0 ? ` / ${Object.keys(s.vote1?.entryLog||{}).length} belépett` : ''}
+      </div>
       ${displayList1.map(([n,c])=>{const w=ws.has(n)&&v1s==='closed',t=tiedSet.has(n);return `<div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:18px;font-weight:${w||t?'700':'400'};color:${w?'#057a55':t?'#d97706':'inherit'}">${w?'✓ ':t?'⚡ ':''}${n}</span>
@@ -720,13 +750,13 @@ window.saveCands = async () => {
 window.startV1 = async () => {
   if(!dbState.vote1?.candidates?.length){alert('Töltsd be a jelölteket!');return;}
   const res={}; (dbState.vote1.candidates).forEach(c=>res[c]=0);
-  await update(ref(db,'state/vote1'),{status:'active',results:res,voterCount:0,log:{}});
+  await update(ref(db,'state/vote1'),{status:'active',results:res,voterCount:0,log:{},entryLog:{}});
 };
 
 window.resetV1 = async () => {
   if(!confirm('Reset? Minden szavazat törlődik!')) return;
   const res={}; (dbState.vote1?.candidates||[]).forEach(c=>res[c]=0);
-  await update(ref(db,'state/vote1'),{status:'inactive',results:res,winners:[],voterCount:0,log:{},runoffCandidates:[]});
+  await update(ref(db,'state/vote1'),{status:'inactive',results:res,winners:[],voterCount:0,log:{},entryLog:{},runoffCandidates:[],runoffSpotsNeeded:0});
   localVotes1={};
 };
 
@@ -734,15 +764,14 @@ window.closeV1 = async (withRunoff) => {
   const results = dbState.vote1?.results || {};
   const sorted = Object.entries(results).sort((a,b)=>b[1]-a[1]);
   if (withRunoff) {
-    // Holtverseny a 11. helyen — kik érintettek?
-    const score11 = sorted[10]?.[1];
-    const tied = sorted.filter(([,v])=>v===score11).map(([n])=>n);
-    // Az első 10 biztos nyertes
-    const definite = sorted.slice(0,10).map(e=>e[0]);
+    const tieInfo = detectTieV1(results);
+    if (!tieInfo) return;
+    const definite = sorted.filter(([,v])=>v>sorted[10][1]).map(e=>e[0]);
     await update(ref(db,'state/vote1'),{
       status:'runoff',
       winners:definite,
-      runoffCandidates:tied,
+      runoffCandidates:tieInfo.tied,
+      runoffSpotsNeeded:tieInfo.spotsNeeded,
       results:{},
       voterCount:0,
       log:{}
@@ -821,13 +850,23 @@ window.delV2 = async (key,off,vote) => {
   await update(ref(db),upd);
 };
 
+// Belépés naplózása az 1. körnél
+async function logEntry() {
+  const s = dbState;
+  if (s.vote1?.status !== 'active' && s.vote1?.status !== 'runoff') return;
+  if (s.vote1?.entryLog?.[DID]) return; // már be van logolva
+  await update(ref(db,`state/vote1/entryLog/${DID}`), { ts: Date.now() });
+}
+logEntry();
+
 window.tv1=(n,ch)=>{ localVotes1[n]=ch; renderVoter1(); };
 window.subV1=async()=>{
   const status=dbState.vote1?.status;
   const isRunoff=status==='runoff';
+  const spotsNeeded=dbState.vote1?.runoffSpotsNeeded||1;
   const picked=Object.keys(localVotes1).filter(k=>localVotes1[k]);
   if(!picked.length){alert('Válassz legalább egy jelöltet!');return;}
-  if(isRunoff&&picked.length>1){alert('Pótszavazásnál csak egyet választhatsz!');return;}
+  if(isRunoff&&picked.length>spotsNeeded){alert(`Pótszavazásnál legfeljebb ${spotsNeeded} jelöltet választhatsz!`);return;}
   const upd={};
   picked.forEach(c=>{ upd[`state/vote1/results/${c}`]=(dbState.vote1?.results?.[c]||0)+1; });
   upd['state/vote1/voterCount']=(dbState.vote1?.voterCount||0)+1;
