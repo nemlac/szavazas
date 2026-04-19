@@ -594,14 +594,21 @@ function renderProjector() {
 
   let results = '';
   if (activeOff) {
-    const res=s.vote2?.results?.[activeOff]||{};
-    const sorted=Object.entries(res).sort((a,b)=>b[1]-a[1]);
-    const max=Math.max(...sorted.map(e=>e[1]),1);
-    const tied=detectTieOffice(res);
-    const tiedSet=new Set(tied||[]);
-    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${activeOff}${s.vote2?.status?.[activeOff]==='runoff'?' — Pótszavazás':' szavazás'}</div>
-      <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">Leadott szavazat: ${sorted.reduce((a,b)=>a+b[1],0)}</div>
-      ${sorted.map(([n,c])=>{const t=tiedSet.has(n);return `<div style="margin-bottom:18px">
+    const offSt = s.vote2?.status?.[activeOff];
+    const isRunoff = offSt === 'runoff';
+    const res = s.vote2?.results?.[activeOff] || {};
+    // Pótszavazásnál a runoffNominees-ből indulunk ki, hogy 0 szavazatnál is látszódjanak
+    const nomList = isRunoff
+      ? (s.vote2?.runoffNominees?.[activeOff] || [])
+      : (s.vote2?.nominees?.[activeOff] || []);
+    // Minden jelölthöz megjelenítjük az aktuális eredményt (0 is)
+    const displayList = nomList.map(n => [n, res[n] || 0]).sort((a,b) => b[1]-a[1]);
+    const max = Math.max(...displayList.map(e=>e[1]), 1);
+    const tied = detectTieOffice(res);
+    const tiedSet = new Set(tied || []);
+    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${activeOff}${isRunoff?' — Pótszavazás':' szavazás'}</div>
+      <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">Leadott szavazat: ${displayList.reduce((a,b)=>a+b[1],0)}</div>
+      ${displayList.map(([n,c])=>{const t=tiedSet.has(n);return `<div style="margin-bottom:18px">
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
           <span style="font-size:22px;font-weight:600">${t?'⚡ ':''}${n}</span>
           <span style="font-size:22px;font-weight:700;color:${t?'#d97706':'#1a56db'}">${c}</span>
@@ -627,20 +634,25 @@ function renderProjector() {
         </div>
       </div>`;}).join('')}`;
   } else {
-    const sorted=Object.entries(s.vote1?.results||{}).sort((a,b)=>b[1]-a[1]);
-    const max=Math.max(...sorted.map(e=>e[1]),1);
-    const ws=new Set(s.vote1?.winners||[]);
-    const tied=v1s==='active'?detectTieV1(s.vote1?.results||{},s.vote1?.winners||[]):null;
-    const tiedSet=new Set(tied||[]);
-    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">1. kör — Tagválasztás${v1s==='runoff'?' (Pótszavazás)':''}</div>
+    const v1res = s.vote1?.results || {};
+    const isRunoff1 = v1s === 'runoff';
+    // Pótszavazásnál a runoffCandidates-ből indulunk ki
+    const displayList1 = isRunoff1
+      ? (s.vote1?.runoffCandidates || []).map(n => [n, v1res[n] || 0]).sort((a,b)=>b[1]-a[1])
+      : Object.entries(v1res).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const max1 = Math.max(...displayList1.map(e=>e[1]), 1);
+    const ws = new Set(s.vote1?.winners || []);
+    const tied = v1s==='active' ? detectTieV1(v1res, s.vote1?.winners||[]) : null;
+    const tiedSet = new Set(tied || []);
+    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">1. kör — Tagválasztás${isRunoff1?' (Pótszavazás)':''}</div>
       <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">Leadott szavazat: ${s.vote1?.voterCount||0}</div>
-      ${sorted.slice(0,15).map(([n,c])=>{const w=ws.has(n)&&v1s==='closed',t=tiedSet.has(n);return `<div style="margin-bottom:10px">
+      ${displayList1.map(([n,c])=>{const w=ws.has(n)&&v1s==='closed',t=tiedSet.has(n);return `<div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:18px;font-weight:${w||t?'700':'400'};color:${w?'#057a55':t?'#d97706':'inherit'}">${w?'✓ ':t?'⚡ ':''}${n}</span>
           <span style="font-size:18px;font-weight:600;color:${w?'#057a55':t?'#d97706':'#1a56db'}">${c}</span>
         </div>
         <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
-          <div style="height:100%;background:${w?'#057a55':t?'#d97706':'#1a56db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+          <div style="height:100%;background:${w?'#057a55':t?'#d97706':'#1a56db'};border-radius:4px;width:${Math.round(c/max1*100)}%;transition:width .5s"></div>
         </div>
       </div>`;}).join('')}`;
   }
