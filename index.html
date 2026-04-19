@@ -570,31 +570,25 @@ function renderProjector() {
   const lastClosed = [...offices].reverse().find(o=>s.vote2?.status?.[o]==='closed');
   const anyVote = v1s!=='inactive' || activeOff || lastClosed;
 
-  // QR meghatározás: melyik kör aktív?
-  const showR1QR = !activeOff && !lastClosed; // 1. kör vagy semmi
-  const showR2QR = !!(activeOff || lastClosed); // 2. kör aktív
-
-  function makeQRHtml(size) {
-    if (!anyVote) {
-      // Várakozás: mindkettő nagy
-      return `<div style="display:flex;gap:3rem;align-items:center;justify-content:center">
-        <div style="text-align:center"><div class="proj-qr-big"><div id="pqr1"></div></div><div style="margin-top:10px;font-size:16px;color:#6b7280">1. kör szavazók</div></div>
-        <div style="text-align:center"><div class="proj-qr-big"><div id="pqr2"></div></div><div style="margin-top:10px;font-size:16px;color:#6b7280">2. kör (11 nyertes)</div></div>
-      </div>`;
-    }
-    const qrId = showR2QR ? 'pqr2' : 'pqr1';
-    const qrLabel = showR2QR ? '2. kör (11 nyertes)' : '1. kör szavazók';
-    return `<div class="proj-qr-side">
-      <div class="proj-qr-item"><div id="${qrId}"></div><div class="proj-qr-label">${qrLabel}</div></div>
-    </div>`;
-  }
+  // QR: 2. kör aktív → 2. kör QR, egyébként mindig 1. kör QR
+  const showR2QR = !!(activeOff || lastClosed);
+  const qrId    = showR2QR ? 'pqr2' : 'pqr1';
+  const qrUrl   = showR2QR ? r2Url() : voterUrl();
+  const qrLabel = showR2QR ? '2. kör (11 nyertes)' : '1. kör szavazók';
+  const qrSideHtml = `<div class="proj-qr-side"><div class="proj-qr-item"><div id="${qrId}"></div><div class="proj-qr-label">${qrLabel}</div></div></div>`;
 
   if (!anyVote) {
     R(`<div class="proj-wrap">
       <h1 style="font-size:36px;text-align:center;margin-bottom:2rem">${title}</h1>
-      <div class="proj-waiting">${makeQRHtml(220)}<div style="font-size:18px;color:#9ca3af">Várakozás a szavazás kezdetére...</div></div>
+      <div class="proj-waiting">
+        <div style="text-align:center">
+          <div class="proj-qr-big"><div id="pqr1"></div></div>
+          <div style="margin-top:10px;font-size:16px;color:#6b7280">1. kör szavazók</div>
+        </div>
+        <div style="font-size:18px;color:#9ca3af">Várakozás a szavazás kezdetére...</div>
+      </div>
     </div>`);
-    setTimeout(()=>{ makeProjQR('pqr1',voterUrl(),220); makeProjQR('pqr2',r2Url(),220); }, 80);
+    setTimeout(()=>{ makeProjQR('pqr1',voterUrl(),220); }, 80);
     return;
   }
 
@@ -651,7 +645,6 @@ function renderProjector() {
       </div>`;}).join('')}`;
   }
 
-  const qrSide = makeQRHtml(120);
   R(`<div class="proj-wrap">
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem">
       <h1 style="font-size:28px">${title}</h1>
@@ -659,13 +652,10 @@ function renderProjector() {
     </div>
     <div class="proj-qr-row">
       <div class="proj-results">${results}</div>
-      ${qrSide}
+      ${qrSideHtml}
     </div>
   </div>`);
-  setTimeout(()=>{
-    if (showR2QR) makeProjQR('pqr2',r2Url(),120);
-    else makeProjQR('pqr1',voterUrl(),120);
-  }, 80);
+  setTimeout(()=>{ makeProjQR(qrId, qrUrl, 120); }, 80);
 }
 
 function makeProjQR(id,url,size) {
