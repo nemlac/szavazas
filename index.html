@@ -24,8 +24,8 @@ h2{font-size:18px;font-weight:600;margin-bottom:12px}
 .b-active{background:#d1fae5;color:#065f46}
 .b-closed{background:#fee2e2;color:#991b1b}
 .b-winner{background:#dbeafe;color:#1e40af}
-input[type=text],select,textarea{width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;margin-bottom:8px}
-input[type=text]:focus,select:focus,textarea:focus{outline:none;border-color:#1a56db}
+input[type=text],textarea{width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;margin-bottom:8px}
+input[type=text]:focus,textarea:focus{outline:none;border-color:#1a56db}
 textarea{height:120px;resize:vertical}
 .cand-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
 .cand-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;cursor:pointer;background:#fff;transition:all .15s}
@@ -63,7 +63,6 @@ textarea{height:120px;resize:vertical}
 .tab.active{color:#1a56db;border-bottom-color:#1a56db;font-weight:500}
 .info{background:#f9fafb;border-radius:8px;padding:12px 14px;font-size:14px;color:#6b7280;margin-bottom:12px;line-height:1.6}
 .winner-box{background:#d1fae5;border:1.5px solid #057a55;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:14px;color:#065f46}
-.error-box{background:#fee2e2;border:1.5px solid #c81e1e;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:14px;color:#991b1b}
 .chip{display:inline-flex;align-items:center;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:20px;padding:4px 10px;font-size:12px;margin:2px;cursor:pointer;transition:all .15s}
 .chip:hover{border-color:#1a56db}
 .chip.selected{background:#eff6ff;border-color:#1a56db;color:#1e40af}
@@ -79,77 +78,110 @@ textarea{height:120px;resize:vertical}
 @keyframes spin{to{transform:rotate(360deg)}}
 .success-screen{text-align:center;padding:2rem 1rem}
 .success-icon{font-size:56px;margin-bottom:1rem}
-.device-id-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:13px;color:#6b7280;margin-top:1rem;font-family:monospace;word-break:break-all}
-.qr-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;text-align:center;margin-bottom:1rem}
-.qr-box canvas{margin:0 auto;display:block}
-.qr-label{font-size:12px;color:#9ca3af;margin-top:8px;word-break:break-all}
+.device-id-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-size:12px;color:#9ca3af;margin-top:1rem;font-family:monospace;word-break:break-all}
+.access-denied{text-align:center;padding:3rem 1rem}
 .log-table{width:100%;border-collapse:collapse;font-size:13px}
 .log-table th{text-align:left;padding:8px 10px;border-bottom:2px solid #e5e7eb;color:#6b7280;font-weight:500}
 .log-table td{padding:8px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
 .log-table tr:hover td{background:#f9fafb}
-.votes-list{font-size:11px;color:#6b7280;max-width:200px}
+.votes-cell{font-size:11px;color:#6b7280;max-width:180px;line-height:1.5}
 hr{border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0}
+/* Projector */
+.proj-wrap{max-width:960px;margin:0 auto;padding:2rem}
+.proj-qr-row{display:flex;align-items:flex-start;gap:2rem;margin-bottom:2rem}
+.proj-qr-side{display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+.proj-qr-item{background:#fff;border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.proj-qr-label{font-size:11px;color:#9ca3af;margin-top:6px}
+.proj-results{flex:1}
+.proj-waiting{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:2rem}
+.proj-qr-big{background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="app"><div class="loading"><div class="spinner"></div><span>Betöltés...</span></div></div>
-</div>
+<div id="root"><div class="wrap"><div class="card"><div class="loading"><div class="spinner"></div><span>Betöltés...</span></div></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBcrATH0W2VVbLI2lfVvoT2V9CmhgvOQn4",
-  authDomain: "szavazas-dd648.firebaseapp.com",
-  databaseURL: "https://szavazas-dd648-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "szavazas-dd648",
-  storageBucket: "szavazas-dd648.firebasestorage.app",
-  messagingSenderId: "320150428563",
-  appId: "1:320150428563:web:7332b408496db091ec6666"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-// ── Routing ──
-const params = new URLSearchParams(window.location.search);
-const mode = params.get('mode') || 'voter1';
-const isAdmin = mode === 'admin';
-const isProjector = mode === 'kivetito';
-const isRound2 = mode === '2kor';
-
-// ── Eszköz azonosító ──
-function getDeviceId() {
-  let id = localStorage.getItem('szavazas_device_id');
-  if (!id) {
-    id = 'eszkoz-' + Math.random().toString(36).substr(2,6) + '-' + Date.now().toString(36).substr(-4);
-    localStorage.setItem('szavazas_device_id', id);
-  }
-  return id;
-}
-const DEVICE_ID = getDeviceId();
-
-// ── Helyi állapot ──
-let localVotes1 = {};
-let localVoterName = null;
-let confirmingName = false;
-let votedOffices = new Set();
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ── Firebase ──
-let dbState = {};
-onValue(ref(db, 'state'), snap => {
-  dbState = snap.val() || {};
-  render();
+const app = initializeApp({
+  apiKey:"AIzaSyBcrATH0W2VVbLI2lfVvoT2V9CmhgvOQn4",
+  authDomain:"szavazas-dd648.firebaseapp.com",
+  databaseURL:"https://szavazas-dd648-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"szavazas-dd648",
+  storageBucket:"szavazas-dd648.firebasestorage.app",
+  messagingSenderId:"320150428563",
+  appId:"1:320150428563:web:7332b408496db091ec6666"
 });
+const db = getDatabase(app);
 
+// ── Tokenek ──
+const TOKEN_VOTER  = 'szv-m7k2p9q4r1x8w3n6';
+const TOKEN_ADMIN  = 'adm-t5j3h8c1v6b4z9f2';
+
+// ── Routing ──
+const P = new URLSearchParams(window.location.search);
+const mode   = P.get('mode') || 'voter1';
+const token  = P.get('token') || '';
+const isAdmin     = mode === 'admin';
+const isProjector = mode === 'kivetito';
+const isRound2    = mode === '2kor';
+
+// ── Token ellenőrzés ──
+function checkAccess() {
+  if (isAdmin)  return token === TOKEN_ADMIN;
+  return token === TOKEN_VOTER;
+}
+
+// ── Eszköz ID ──
+function getDeviceId() {
+  let id = localStorage.getItem('szavazas_did');
+  if (!id) { id = 'eszkoz-' + Math.random().toString(36).substr(2,5) + '-' + Date.now().toString(36).substr(-4); localStorage.setItem('szavazas_did', id); }
+  return id;
+}
+const DID = getDeviceId();
+
+// ── Helyi állapot ──
+let dbState = {};
+let localVotes1 = {};
+let voterName = null;
+let confirming = false;
+let votedOffices = new Set();
+
+onValue(ref(db,'state'), snap => { dbState = snap.val() || {}; render(); });
+
+// ── Helpers ──
+const esc = s => String(s).replace(/'/g,"\\'");
+const R = html => { document.getElementById('root').innerHTML = html; };
+const wrap = (content, proj=false) => proj
+  ? `<div class="proj-wrap">${content}</div>`
+  : `<div class="wrap"><div class="card">${content}</div></div>`;
+
+function baseUrl() { return window.location.href.split('?')[0]; }
+function voterUrl() { return baseUrl()+'?token='+TOKEN_VOTER; }
+function r2Url()    { return baseUrl()+'?token='+TOKEN_VOTER+'&mode=2kor'; }
+function projUrl()  { return baseUrl()+'?token='+TOKEN_VOTER+'&mode=kivetito'; }
+function adminUrl() { return baseUrl()+'?token='+TOKEN_ADMIN+'&mode=admin'; }
+
+// ══════════════════════════════════════
+// RENDER ROUTER
+// ══════════════════════════════════════
 function render() {
-  if (isAdmin) renderAdmin();
-  else if (isProjector) renderProjector();
-  else if (isRound2) renderRound2();
-  else renderVoter1();
+  if (!checkAccess()) { renderDenied(); return; }
+  if (isAdmin)     { renderAdmin(); return; }
+  if (isProjector) { renderProjector(); return; }
+  if (isRound2)    { renderRound2(); return; }
+  renderVoter1();
+}
+
+function renderDenied() {
+  R(wrap(`<div class="access-denied">
+    <div style="font-size:48px;margin-bottom:1rem">🔒</div>
+    <h1>Nincs hozzáférésed</h1>
+    <p style="color:#6b7280;margin-top:8px">Kérj QR kódot a szervezőktől.</p>
+  </div>`));
 }
 
 // ══════════════════════════════════════
@@ -157,213 +189,215 @@ function render() {
 // ══════════════════════════════════════
 function renderAdmin() {
   const s = dbState;
-  const tab = window._adminTab || 'setup';
-  const baseUrl = window.location.href.split('?')[0];
-
-  document.getElementById('app').innerHTML = `
-    <div class="card">
-      <h1>${s.settings?.title || 'Szavazás'}</h1>
-      <div class="sub">${s.settings?.subtitle || 'Adminisztrációs felület'}</div>
-      <div class="tab-bar">
-        <button class="tab ${tab==='setup'?'active':''}" onclick="setTab('setup')">Beállítás</button>
-        <button class="tab ${tab==='control'?'active':''}" onclick="setTab('control')">Vezérlés</button>
-        <button class="tab ${tab==='results'?'active':''}" onclick="setTab('results')">Eredmények</button>
-        <button class="tab ${tab==='log'?'active':''}" onclick="setTab('log')">Napló</button>
-        <button class="tab ${tab==='qr'?'active':''}" onclick="setTab('qr')">QR kódok</button>
-      </div>
-      <div id="tab-content">${renderAdminTab(tab, s, baseUrl)}</div>
-    </div>`;
-
-  if (tab === 'qr') setTimeout(() => generateQRCodes(baseUrl), 100);
+  const tab = window._tab || 'setup';
+  R(wrap(`
+    <h1>${s.settings?.title||'Szavazás'}</h1>
+    <div class="sub">${s.settings?.subtitle||'Adminisztrációs felület'}</div>
+    <div class="tab-bar">
+      ${['setup','control','results','log','qr'].map(t=>`<button class="tab${tab===t?' active':''}" onclick="setTab('${t}')">${{setup:'Beállítás',control:'Vezérlés',results:'Eredmények',log:'Napló',qr:'QR kódok'}[t]}</button>`).join('')}
+    </div>
+    <div id="tc">${adminTab(tab,s)}</div>
+  `));
+  if (tab==='qr') setTimeout(()=>makeQRs(),80);
 }
 
-function renderAdminTab(tab, s, baseUrl) {
-  if (tab === 'setup') return renderSetup(s);
-  if (tab === 'control') return renderControl(s);
-  if (tab === 'results') return renderResults(s);
-  if (tab === 'log') return renderLog(s);
-  if (tab === 'qr') return renderQR();
+function adminTab(tab,s) {
+  if (tab==='setup')   return tabSetup(s);
+  if (tab==='control') return tabControl(s);
+  if (tab==='results') return tabResults(s);
+  if (tab==='log')     return tabLog(s);
+  if (tab==='qr')      return tabQR();
   return '';
 }
 
-function renderSetup(s) {
+function tabSetup(s) {
   const offices = s.settings?.offices || ['Elnök','Titkár','Kincstárnok'];
   const winners = s.vote1?.winners || [];
-  const usedAsWinner = new Set(Object.values(s.vote2?.officeWinners || {}));
+  const wonSet  = new Set(Object.values(s.vote2?.officeWinners||{}));
 
-  let officeSetup = '';
+  let offHtml = '';
   if (winners.length) {
-    offices.forEach(office => {
-      const nominees = s.vote2?.nominees?.[office] || [];
-      const isLocked = ['active','closed'].includes(s.vote2?.status?.[office]);
-      officeSetup += `<div class="office-setup">
-        <div class="office-setup-title">
-          <span>${office}</span>
-          ${s.vote2?.officeWinners?.[office] ? `<span class="badge b-winner">✓ ${s.vote2.officeWinners[office]}</span>` : ''}
+    offices.forEach(off => {
+      const noms   = s.vote2?.nominees?.[off] || [];
+      const locked = ['active','closed'].includes(s.vote2?.status?.[off]);
+      offHtml += `<div class="office-setup">
+        <div class="office-setup-title"><span>${off}</span>
+          ${s.vote2?.officeWinners?.[off]?`<span class="badge b-winner">✓ ${s.vote2.officeWinners[off]}</span>`:''}
         </div>
-        ${isLocked
-          ? `<div class="info">Szavazás folyamatban — jelöltek: ${nominees.join(', ')}</div>`
+        ${locked
+          ? `<div class="info">Szavazás folyamatban — jelöltek: ${noms.join(', ')}</div>`
           : `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
-              ${winners.map(name => {
-                const isWon = usedAsWinner.has(name) && !nominees.includes(name);
-                const isSel = nominees.includes(name);
-                return `<span class="chip${isSel?' selected':''}${isWon?' used':''}" onclick="toggleNominee('${office}','${esc(name)}')">${name}${isSel?' ✓':''}</span>`;
+              ${winners.map(n=>{
+                const won=wonSet.has(n)&&!noms.includes(n), sel=noms.includes(n);
+                return `<span class="chip${sel?' selected':''}${won?' used':''}" onclick="toggleNom('${off}','${esc(n)}')">${n}${sel?' ✓':''}</span>`;
               }).join('')}
-            </div>
-            <div style="font-size:12px;color:#6b7280">Kijelölve: ${nominees.length} fő (max 4)</div>`
-        }
+             </div><div style="font-size:12px;color:#6b7280">Kijelölve: ${noms.length} fő (max 4)</div>`}
       </div>`;
     });
   }
 
   return `
     <h2>Általános beállítások</h2>
-    <input type="text" id="set-title" placeholder="Szavazás neve" value="${s.settings?.title||''}">
-    <input type="text" id="set-subtitle" placeholder="Alcím / szervezet neve" value="${s.settings?.subtitle||''}">
-    <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:#6b7280">Tisztségek (soronként egy)</div>
-    <textarea id="set-offices">${offices.join('\n')}</textarea>
-    <button class="btn btn-outline" onclick="saveSettings()" style="width:auto">Beállítások mentése</button>
+    <input type="text" id="s-title" placeholder="Szavazás neve" value="${s.settings?.title||''}">
+    <input type="text" id="s-sub" placeholder="Alcím / szervezet neve" value="${s.settings?.subtitle||''}">
+    <div style="font-size:13px;color:#6b7280;margin-bottom:6px">Tisztségek (soronként egy)</div>
+    <textarea id="s-offices">${offices.join('\n')}</textarea>
+    <button class="btn btn-outline" onclick="saveSettings()" style="width:auto">Mentés</button>
     <hr>
     <h2>1. kör — jelöltek (max 45 fő)</h2>
-    <div class="upload-zone" onclick="document.getElementById('file-inp').click()">
-      <input type="file" id="file-inp" accept=".xlsx,.xls,.csv,.txt" onchange="handleFile(this)" style="display:none">
+    <div class="upload-zone" onclick="document.getElementById('fi').click()">
+      <input type="file" id="fi" accept=".xlsx,.xls,.csv,.txt" onchange="handleFile(this)" style="display:none">
       <div style="font-size:28px;margin-bottom:6px">📂</div>
       <div style="font-weight:500">Fájl betöltése</div>
-      <div style="font-size:13px;color:#9ca3af">Excel (.xlsx), CSV vagy TXT</div>
+      <div style="font-size:13px;color:#9ca3af">Excel, CSV vagy TXT</div>
     </div>
     <div class="divider">vagy</div>
-    <textarea id="names-input" placeholder="Soronként egy név...">${(s.vote1?.candidates||[]).join('\n')}</textarea>
+    <textarea id="ni" placeholder="Soronként egy név...">${(s.vote1?.candidates||[]).join('\n')}</textarea>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="btn btn-outline" onclick="loadDemo()" style="width:auto">Demo nevek</button>
-      <button class="btn btn-primary" onclick="saveCandidates()" style="width:auto">Mentés</button>
+      <button class="btn btn-primary" onclick="saveCands()" style="width:auto">Mentés</button>
     </div>
-    <div id="cand-preview" style="font-size:13px;color:#6b7280;margin-bottom:1rem">${s.vote1?.candidates?.length ? s.vote1.candidates.length+' jelölt elmentve' : ''}</div>
-    ${winners.length ? `<hr><h2>2. kör — tisztségjelöltek</h2><div class="info">Kattints a nevekre a jelöltek kijelöléséhez.</div>${officeSetup}` : ''}`;
+    <div id="cp" style="font-size:13px;color:#6b7280">${s.vote1?.candidates?.length?s.vote1.candidates.length+' jelölt':'Nincs jelölt'}</div>
+    ${winners.length?`<hr><h2>2. kör — tisztségjelöltek</h2><div class="info">Kattints a nevekre a jelöltek kijelöléséhez.</div>${offHtml}`:''}`;
 }
 
-function renderControl(s) {
+function tabControl(s) {
   const offices = s.settings?.offices || ['Elnök','Titkár','Kincstárnok'];
   const v1s = s.vote1?.status || 'inactive';
-  const votes = s.vote1?.voterCount || 0;
-
   return `
     <h2>Szavazások vezérlése</h2>
     <div class="ctrl-row">
       <span class="ctrl-name">1. kör — tagválasztás</span>
       <span class="badge ${v1s==='active'?'b-active':v1s==='closed'?'b-closed':'b-inactive'}">${v1s==='active'?'Aktív':v1s==='closed'?'Lezárva':'Inaktív'}</span>
-      <span style="font-size:13px;color:#6b7280">${votes} szavazat</span>
-      <button class="btn btn-success btn-sm" onclick="startVote1()">Indítás</button>
-      <button class="btn btn-outline btn-sm" onclick="resetVote1()">Reset</button>
-      <button class="btn btn-danger btn-sm" onclick="closeVote1()">Lezárás</button>
+      <span style="font-size:13px;color:#6b7280">${s.vote1?.voterCount||0} szavazat</span>
+      <button class="btn btn-success btn-sm" onclick="startV1()">Indítás</button>
+      <button class="btn btn-outline btn-sm" onclick="resetV1()">Reset</button>
+      <button class="btn btn-danger btn-sm" onclick="closeV1()">Lezárás</button>
     </div>
-    ${offices.map(office => {
-      const st = s.vote2?.status?.[office] || 'inactive';
-      const vc = s.vote2?.voterCount?.[office] || 0;
+    ${offices.map(off=>{
+      const st=s.vote2?.status?.[off]||'inactive';
+      const vc=s.vote2?.voterCount?.[off]||0;
       return `<div class="ctrl-row">
-        <span class="ctrl-name">2. kör — ${office}</span>
+        <span class="ctrl-name">2. kör — ${off}</span>
         <span class="badge ${st==='active'?'b-active':st==='closed'?'b-closed':'b-inactive'}">${st==='active'?'Aktív':st==='closed'?'Lezárva':'Inaktív'}</span>
         <span style="font-size:13px;color:#6b7280">${vc} szavazat</span>
-        <button class="btn btn-success btn-sm" onclick="startOffice('${office}')">Indítás</button>
-        <button class="btn btn-outline btn-sm" onclick="resetOffice('${office}')">Reset</button>
-        <button class="btn btn-danger btn-sm" onclick="closeOffice('${office}')">Lezárás</button>
+        <button class="btn btn-success btn-sm" onclick="startOff('${off}')">Indítás</button>
+        <button class="btn btn-outline btn-sm" onclick="resetOff('${off}')">Reset</button>
+        <button class="btn btn-danger btn-sm" onclick="closeOff('${off}')">Lezárás</button>
       </div>`;
     }).join('')}`;
 }
 
-function renderResults(s) {
+function tabResults(s) {
   const offices = s.settings?.offices || ['Elnök','Titkár','Kincstárnok'];
-  let html = '';
-
+  let h = '';
   if (s.vote1?.results) {
-    const sorted = Object.entries(s.vote1.results).sort((a,b)=>b[1]-a[1]);
-    const max = Math.max(...sorted.map(e=>e[1]),1);
-    const winnerSet = new Set(s.vote1.winners||[]);
-    html += `<h2 style="margin-bottom:12px">1. kör eredménye</h2>`;
-    if (winnerSet.size) html += `<div class="winner-box">Nyertesek (11 fő): ${[...winnerSet].join(', ')}</div>`;
-    sorted.slice(0,20).forEach(([name,count]) => {
-      const pct = Math.round(count/max*100);
-      const isW = winnerSet.has(name);
-      html += `<div class="result-row">
-        <div class="result-name">${isW?'✓ ':''}<b style="font-weight:${isW?'600':'400'}">${name}</b></div>
-        <div class="bar-wrap"><div class="bar${isW?' winner-bar':''}" style="width:${pct}%"></div></div>
-        <div class="result-cnt">${count}</div>
-      </div>`;
+    const sorted=Object.entries(s.vote1.results).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(...sorted.map(e=>e[1]),1);
+    const ws=new Set(s.vote1.winners||[]);
+    h+=`<h2 style="margin-bottom:12px">1. kör</h2>`;
+    if(ws.size) h+=`<div class="winner-box">Nyertesek: ${[...ws].join(', ')}</div>`;
+    sorted.slice(0,20).forEach(([n,c])=>{
+      const w=ws.has(n);
+      h+=`<div class="result-row"><div class="result-name">${w?'✓ ':''}<b style="font-weight:${w?'600':'400'}">${n}</b></div><div class="bar-wrap"><div class="bar${w?' winner-bar':''}" style="width:${Math.round(c/max*100)}%"></div></div><div class="result-cnt">${c}</div></div>`;
     });
-    html += '<hr>';
+    h+='<hr>';
   }
-
-  offices.forEach(office => {
-    const res = s.vote2?.results?.[office];
-    if (!res) return;
-    const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]);
-    const max2 = Math.max(...sorted.map(e=>e[1]),1);
-    const winner = s.vote2?.officeWinners?.[office];
-    html += `<h2 style="margin-bottom:12px">${office}</h2>`;
-    if (winner) html += `<div class="winner-box">Megválasztva: <b>${winner}</b></div>`;
-    sorted.forEach(([name,count]) => {
-      const pct = Math.round(count/max2*100);
-      const isW = winner===name;
-      html += `<div class="result-row">
-        <div class="result-name">${isW?'✓ ':''}<b style="font-weight:${isW?'600':'400'}">${name}</b></div>
-        <div class="bar-wrap"><div class="bar${isW?' winner-bar':''}" style="width:${pct}%"></div></div>
-        <div class="result-cnt">${count}</div>
-      </div>`;
+  offices.forEach(off=>{
+    const res=s.vote2?.results?.[off]; if(!res) return;
+    const sorted=Object.entries(res).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(...sorted.map(e=>e[1]),1);
+    const win=s.vote2?.officeWinners?.[off];
+    h+=`<h2 style="margin-bottom:12px">${off}</h2>`;
+    if(win) h+=`<div class="winner-box">Megválasztva: <b>${win}</b></div>`;
+    sorted.forEach(([n,c])=>{
+      const w=win===n;
+      h+=`<div class="result-row"><div class="result-name">${w?'✓ ':''}<b style="font-weight:${w?'600':'400'}">${n}</b></div><div class="bar-wrap"><div class="bar${w?' winner-bar':''}" style="width:${Math.round(c/max*100)}%"></div></div><div class="result-cnt">${c}</div></div>`;
     });
-    html += '<hr>';
+    h+='<hr>';
   });
-
-  return html || '<div class="info">Még nincsenek eredmények.</div>';
+  return h || '<div class="info">Még nincsenek eredmények.</div>';
 }
 
-function renderLog(s) {
-  const log = s.vote1?.log || {};
-  const entries = Object.entries(log).sort((a,b) => (b[1].ts||0)-(a[1].ts||0));
+function tabLog(s) {
+  const offices = s.settings?.offices || ['Elnök','Titkár','Kincstárnok'];
+  let h = '<h2 style="margin-bottom:12px">Szavazói napló</h2>';
 
-  if (!entries.length) return '<div class="info">Még nincs szavazói napló.</div>';
+  // 1. kör napló
+  const log1 = s.vote1?.log || {};
+  const e1 = Object.entries(log1).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  h += `<h3 style="font-size:15px;margin-bottom:8px;color:#374151">1. kör</h3>`;
+  if (!e1.length) { h += '<div class="info">Még nincs napló.</div>'; }
+  else {
+    h += `<div style="overflow-x:auto"><table class="log-table"><thead><tr><th>Eszköz ID</th><th>Időpont</th><th>Szavazatok</th><th></th></tr></thead><tbody>
+      ${e1.map(([did,e])=>`<tr>
+        <td style="font-family:monospace;font-size:12px">${did}</td>
+        <td style="white-space:nowrap">${e.ts?new Date(e.ts).toLocaleTimeString('hu'):'-'}</td>
+        <td><div class="votes-cell">${(e.votes||[]).join(', ')}</div></td>
+        <td><button class="btn btn-danger btn-sm" onclick="delV1('${did}')">Töröl</button></td>
+      </tr>`).join('')}
+    </tbody></table></div><hr>`;
+  }
 
+  // 2. kör napló
+  h += `<h3 style="font-size:15px;margin-bottom:8px;color:#374151">2. kör</h3>`;
+  const log2 = s.vote2?.log || {};
+  const e2 = Object.entries(log2).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  if (!e2.length) { h += '<div class="info">Még nincs napló.</div>'; }
+  else {
+    h += `<div style="overflow-x:auto"><table class="log-table"><thead><tr><th>Név</th><th>Tisztség</th><th>Szavazat</th><th>Időpont</th><th></th></tr></thead><tbody>
+      ${e2.map(([key,e])=>`<tr>
+        <td style="font-size:13px">${e.voterName||key}</td>
+        <td style="font-size:13px">${e.office||'-'}</td>
+        <td style="font-size:13px">${e.vote||'-'}</td>
+        <td style="white-space:nowrap;font-size:12px">${e.ts?new Date(e.ts).toLocaleTimeString('hu'):'-'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="delV2('${key}','${e.office||''}','${esc(e.vote||'')}')">Töröl</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  }
+  return h;
+}
+
+function tabQR() {
   return `
-    <h2 style="margin-bottom:12px">Szavazói napló — 1. kör</h2>
-    <div style="overflow-x:auto">
-    <table class="log-table">
-      <thead><tr>
-        <th>Eszköz ID</th>
-        <th>Időpont</th>
-        <th>Szavazatok</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${entries.map(([deviceId, entry]) => `
-          <tr>
-            <td style="font-family:monospace;font-size:12px">${deviceId}</td>
-            <td style="white-space:nowrap">${entry.ts ? new Date(entry.ts).toLocaleTimeString('hu') : '-'}</td>
-            <td><div class="votes-list">${(entry.votes||[]).join(', ')}</div></td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteVote('${deviceId}')">Töröl</button></td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
+    <h2 style="margin-bottom:4px">QR kódok</h2>
+    <div class="info" style="margin-bottom:1rem">Ezeket vetítsd ki vagy oszd meg a résztvevőkkel.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem;text-align:center">
+        <div style="font-size:13px;font-weight:500;margin-bottom:10px">1. kör — szavazók</div>
+        <div id="qr1"></div>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem;text-align:center">
+        <div style="font-size:13px;font-weight:500;margin-bottom:10px">2. kör — 11 nyertes</div>
+        <div id="qr2"></div>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem;text-align:center">
+        <div style="font-size:13px;font-weight:500;margin-bottom:10px">Kivetítő</div>
+        <div id="qr3"></div>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem;text-align:center">
+        <div style="font-size:13px;font-weight:500;margin-bottom:10px">Admin</div>
+        <div id="qr4"></div>
+      </div>
+    </div>
+    <div style="margin-top:1rem;font-size:12px;color:#9ca3af;word-break:break-all">
+      <div>1. kör: <b>${voterUrl()}</b></div>
+      <div>2. kör: <b>${r2Url()}</b></div>
+      <div>Kivetítő: <b>${projUrl()}</b></div>
     </div>`;
 }
 
-function renderQR() {
-  return `
-    <h2 style="margin-bottom:12px">QR kódok</h2>
-    <div class="qr-box"><div id="qr1"></div><div class="qr-label" id="qr1-label"></div></div>
-    <div class="qr-box"><div id="qr2"></div><div class="qr-label" id="qr2-label"></div></div>
-    <div class="qr-box"><div id="qr3"></div><div class="qr-label" id="qr3-label"></div></div>`;
-}
-
-function generateQRCodes(baseUrl) {
-  const links = [
-    { id: 'qr1', label: '1. kör szavazók', url: baseUrl },
-    { id: 'qr2', label: '2. kör (11 nyertes)', url: baseUrl + '?mode=2kor' },
-    { id: 'qr3', label: 'Kivetítő', url: baseUrl + '?mode=kivetito' },
+function makeQRs() {
+  const pairs = [
+    ['qr1', voterUrl()],
+    ['qr2', r2Url()],
+    ['qr3', projUrl()],
+    ['qr4', adminUrl()],
   ];
-  links.forEach(({id, label, url}) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = '';
-    new QRCode(el, { text: url, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
-    document.getElementById(id+'-label').textContent = label + ': ' + url;
+  pairs.forEach(([id,url])=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='';
+    new QRCode(el,{text:url,width:150,height:150,correctLevel:QRCode.CorrectLevel.M});
   });
 }
 
@@ -372,45 +406,39 @@ function generateQRCodes(baseUrl) {
 // ══════════════════════════════════════
 function renderVoter1() {
   const s = dbState;
-  const status = s.vote1?.status || 'inactive';
-  const candidates = s.vote1?.candidates || [];
-  const alreadyVoted = s.vote1?.log?.[DEVICE_ID];
   const title = s.settings?.title || 'Szavazás';
   const subtitle = s.settings?.subtitle || '';
+  const status = s.vote1?.status || 'inactive';
+  const cands = s.vote1?.candidates || [];
+  const voted = s.vote1?.log?.[DID];
 
-  let content = '';
-
-  if (alreadyVoted) {
-    content = `<div class="success-screen">
+  let body = '';
+  if (voted) {
+    body = `<div class="success-screen">
       <div class="success-icon">✅</div>
       <h2>Már szavaztál!</h2>
-      <p style="color:#6b7280;margin-top:8px">Szavazatod sikeresen rögzítve.</p>
-      <div class="device-id-box">Eszköz azonosítód:<br><b>${DEVICE_ID}</b></div>
+      <p style="color:#6b7280;margin-top:8px">Szavazatod rögzítve.</p>
+      <div class="device-id-box">Eszköz azonosítód: <b>${DID}</b></div>
     </div>`;
-  } else if (status === 'inactive') {
-    content = `<div class="info" style="text-align:center;padding:2rem">A szavazás még nem kezdődött el.<br>Várd meg az admin jelzését.</div>`;
-  } else if (status === 'closed') {
-    content = `<div class="info" style="text-align:center;padding:2rem">A szavazás lezárult.</div>`;
+  } else if (status==='inactive') {
+    body=`<div class="info" style="text-align:center;padding:2rem">A szavazás még nem kezdődött el.</div>`;
+  } else if (status==='closed') {
+    body=`<div class="info" style="text-align:center;padding:2rem">A szavazás lezárult.</div>`;
   } else {
-    const checked = Object.keys(localVotes1).filter(k=>localVotes1[k]);
-    content = `
-      <div class="counter">Kiválasztva: <span>${checked.length}</span> / 11</div>
+    const checked=Object.keys(localVotes1).filter(k=>localVotes1[k]);
+    body=`<div class="counter">Kiválasztva: <span>${checked.length}</span> / 11</div>
       <div class="cand-grid">
-        ${candidates.map(c => {
-          const isChecked = !!localVotes1[c];
-          const isDisabled = !isChecked && checked.length >= 11;
-          return `<label class="cand-item${isChecked?' checked':''}${isDisabled?' disabled':''}">
-            <input type="checkbox" ${isChecked?'checked':''} ${isDisabled?'disabled':''} onchange="toggleV1('${esc(c)}',this.checked)">
-            ${c}
+        ${cands.map(c=>{
+          const ch=!!localVotes1[c], dis=!ch&&checked.length>=11;
+          return `<label class="cand-item${ch?' checked':''}${dis?' disabled':''}">
+            <input type="checkbox" ${ch?'checked':''} ${dis?'disabled':''} onchange="tv1('${esc(c)}',this.checked)">${c}
           </label>`;
         }).join('')}
       </div>
-      <button class="btn btn-primary" onclick="submitV1()">Szavazat leadása</button>
-      <div class="device-id-box" style="margin-top:1rem">Eszköz azonosítód: <b>${DEVICE_ID}</b></div>`;
+      <button class="btn btn-primary" onclick="subV1()">Szavazat leadása</button>
+      <div class="device-id-box">Eszköz azonosítód: <b>${DID}</b></div>`;
   }
-
-  document.getElementById('app').innerHTML = `
-    <div class="card"><h1>${title}</h1><div class="sub">${subtitle}</div>${content}</div>`;
+  R(wrap(`<h1>${title}</h1><div class="sub">${subtitle}</div>${body}`));
 }
 
 // ══════════════════════════════════════
@@ -423,80 +451,63 @@ function renderRound2() {
   const offices = s.settings?.offices || ['Elnök','Titkár','Kincstárnok'];
 
   if (!winners.length) {
-    document.getElementById('app').innerHTML = `<div class="card"><h1>${title}</h1>
-      <div class="info" style="text-align:center;padding:2rem">Az 1. kör még nem zárult le.</div></div>`;
+    R(wrap(`<h1>${title}</h1><div class="info" style="text-align:center;padding:2rem">Az 1. kör még nem zárult le.</div>`));
     return;
   }
 
-  // Névválasztás
-  if (!localVoterName) {
-    const loggedIn = s.vote2?.loggedIn || {};
-    document.getElementById('app').innerHTML = `<div class="card"><h1>${title}</h1>
+  if (!voterName) {
+    const li = s.vote2?.loggedIn || {};
+    R(wrap(`<h1>${title}</h1>
       <h2 style="margin-bottom:8px">Ki vagy?</h2>
       <div class="info">Keresd meg a nevedet és kattints rá.</div>
       <div class="name-list">
-        ${winners.map(name => {
-          const key = name.replace(/ /g,'_');
-          const used = !!loggedIn[key];
-          return `<button class="name-btn${used?' used':''}" onclick="selectName('${esc(name)}')">
-            ${name} ${used?'<span style="font-size:12px;color:#9ca3af">(már szavazott)</span>':''}
-          </button>`;
+        ${winners.map(n=>{
+          const used=!!li[n.replace(/ /g,'_')];
+          return `<button class="name-btn${used?' used':''}" onclick="selName('${esc(n)}')">${n}${used?' <span style="font-size:12px;color:#9ca3af">(már szavazott)</span>':''}</button>`;
         }).join('')}
-      </div></div>`;
+      </div>`));
     return;
   }
 
-  // Megerősítés
-  if (confirmingName) {
-    document.getElementById('app').innerHTML = `<div class="card"><h1>${title}</h1>
+  if (confirming) {
+    R(wrap(`<h1>${title}</h1>
       <div class="confirm-box">
         <div style="font-size:14px;color:#6b7280">Ezt a nevet választotta:</div>
-        <div class="confirm-name">${localVoterName}</div>
+        <div class="confirm-name">${voterName}</div>
         <div style="font-size:14px;color:#6b7280">Ön az?</div>
       </div>
-      <button class="btn btn-primary" onclick="confirmName()">Igen, szavazok</button>
-      <button class="btn btn-outline" onclick="cancelName()">Mégsem, visszalépek</button>
-    </div>`;
+      <button class="btn btn-primary" onclick="confName()">Igen, szavazok</button>
+      <button class="btn btn-outline" onclick="cancName()">Mégsem, visszalépek</button>`));
     return;
   }
 
-  // Aktív szavazás keresése
-  const activeOffice = offices.find(o => s.vote2?.status?.[o] === 'active');
+  const hdr = `<div class="voter-header">👤 <b>${voterName}</b> &nbsp;|&nbsp; <span style="opacity:.7;font-size:12px">Eszköz: ${DID}</span></div>`;
+  const activeOff = offices.find(o=>s.vote2?.status?.[o]==='active');
 
-  const header = `<div class="voter-header">👤 <b>${localVoterName}</b> &nbsp;|&nbsp; <span style="font-size:12px;opacity:.8">Eszköz: ${DEVICE_ID}</span></div>`;
-
-  if (!activeOffice) {
-    document.getElementById('app').innerHTML = `<div class="card">${header}<h1>${title}</h1>
-      <div class="info">Nincs aktív szavazás. Várd meg az admin jelzését.</div></div>`;
+  if (!activeOff) {
+    R(wrap(`${hdr}<h1>${title}</h1><div class="info">Nincs aktív szavazás. Várd meg az admin jelzését.</div>`));
     return;
   }
 
-  if (votedOffices.has(activeOffice)) {
-    document.getElementById('app').innerHTML = `<div class="card">${header}<h1>${title}</h1>
-      <div class="success-screen">
-        <div class="success-icon">✅</div>
-        <h2>${activeOffice} szavazat rögzítve</h2>
-        <p style="color:#6b7280;margin-top:8px">Várd meg a következő szavazást.</p>
-      </div></div>`;
+  if (votedOffices.has(activeOff)) {
+    R(wrap(`${hdr}<div class="success-screen"><div class="success-icon">✅</div><h2>${activeOff} szavazat rögzítve</h2><p style="color:#6b7280;margin-top:8px">Várd meg a következő szavazást.</p></div>`));
     return;
   }
 
-  const nominees = s.vote2?.nominees?.[activeOffice] || [];
-  const alreadyWon = new Set(Object.values(s.vote2?.officeWinners || {}));
+  const noms = s.vote2?.nominees?.[activeOff] || [];
+  const wonSet = new Set(Object.values(s.vote2?.officeWinners||{}));
 
-  document.getElementById('app').innerHTML = `<div class="card">${header}
-    <h1>${title}</h1>
-    <h2 style="margin-bottom:8px">${activeOffice} választás</h2>
-    <div class="info">Válaszd ki a ${activeOffice.toLowerCase()}t.</div>
-    ${nominees.map(name => {
-      const isWon = alreadyWon.has(name);
-      return `<label class="radio-opt${isWon?' disabled':''}">
-        <input type="radio" name="pick" value="${name}" ${isWon?'disabled':''}>
-        ${name} ${isWon?'<span class="badge b-closed" style="margin-left:4px">Már megválasztva</span>':''}
+  R(wrap(`${hdr}<h1>${title}</h1>
+    <h2 style="margin-bottom:8px">${activeOff} választás</h2>
+    <div class="info">Válaszd ki a ${activeOff.toLowerCase()}t.</div>
+    ${noms.map(n=>{
+      const w=wonSet.has(n);
+      return `<label class="radio-opt${w?' disabled':''}">
+        <input type="radio" name="pick" value="${n}" ${w?'disabled':''}>
+        ${n}${w?' <span class="badge b-closed" style="margin-left:4px">Már megválasztva</span>':''}
       </label>`;
     }).join('')}
-    <button class="btn btn-primary" style="margin-top:12px" onclick="submitOffice('${activeOffice}')">Szavazat leadása</button>
-  </div>`;
+    <button class="btn btn-primary" style="margin-top:12px" onclick="subOff('${activeOff}')">Szavazat leadása</button>`));
 }
 
 // ══════════════════════════════════════
@@ -507,222 +518,246 @@ function renderProjector() {
   const title = s.settings?.title || 'Szavazás';
   const offices = s.settings?.offices || ['Elnök','Titkár','Kincstárnok'];
   const v1s = s.vote1?.status || 'inactive';
-  const activeOffice = offices.find(o => s.vote2?.status?.[o] === 'active');
-  const lastClosed = [...offices].reverse().find(o => s.vote2?.status?.[o] === 'closed');
+  const activeOff = offices.find(o=>s.vote2?.status?.[o]==='active');
+  const lastClosed = [...offices].reverse().find(o=>s.vote2?.status?.[o]==='closed');
+  const hasAnyVote = v1s!=='inactive' || activeOff || lastClosed;
 
-  let content = '';
+  // QR-ek oldalsáv komponens
+  const qrSide = `<div class="proj-qr-side">
+    <div class="proj-qr-item"><div id="pqr1"></div><div class="proj-qr-label">1. kör szavazók</div></div>
+    <div class="proj-qr-item"><div id="pqr2"></div><div class="proj-qr-label">2. kör (11 nyertes)</div></div>
+  </div>`;
 
-  if (activeOffice) {
-    const res = s.vote2?.results?.[activeOffice] || {};
-    const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]);
-    const max = Math.max(...sorted.map(e=>e[1]),1);
-    const total = sorted.reduce((a,b)=>a+b[1],0);
-    content = `<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${activeOffice} szavazás</div>
-      <div style="font-size:14px;color:#9ca3af;margin-bottom:2rem">Szavazatok: ${total}</div>
-      ${sorted.map(([name,count]) => `
-        <div style="margin-bottom:20px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-            <span style="font-size:24px;font-weight:600">${name}</span>
-            <span style="font-size:24px;font-weight:700;color:#1a56db">${count}</span>
+  if (!hasAnyVote) {
+    // Várakozás — nagy QR kódok középen
+    R(`<div class="proj-wrap">
+      <h1 style="font-size:36px;text-align:center;margin-bottom:2rem">${title}</h1>
+      <div class="proj-waiting">
+        <div style="display:flex;gap:3rem;align-items:center">
+          <div style="text-align:center">
+            <div class="proj-qr-big"><div id="pqr1"></div></div>
+            <div style="margin-top:10px;font-size:16px;color:#6b7280">1. kör szavazók</div>
           </div>
-          <div style="background:#e5e7eb;border-radius:6px;height:32px;overflow:hidden">
-            <div style="height:100%;background:#1a56db;border-radius:6px;width:${Math.round(count/max*100)}%;transition:width .5s"></div>
+          <div style="text-align:center">
+            <div class="proj-qr-big"><div id="pqr2"></div></div>
+            <div style="margin-top:10px;font-size:16px;color:#6b7280">2. kör (11 nyertes)</div>
           </div>
-        </div>`).join('')}`;
-  } else if (lastClosed) {
-    const res = s.vote2?.results?.[lastClosed] || {};
-    const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]);
-    const max = Math.max(...sorted.map(e=>e[1]),1);
-    const winner = s.vote2?.officeWinners?.[lastClosed];
-    content = `<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${lastClosed} — Eredmény</div>
-      ${winner?`<div style="font-size:36px;font-weight:700;color:#057a55;margin-bottom:1.5rem">✓ Megválasztva: ${winner}</div>`:''}
-      ${sorted.map(([name,count]) => {
-        const isW = winner===name;
-        return `<div style="margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:22px;font-weight:${isW?'700':'400'};color:${isW?'#057a55':'inherit'}">${isW?'✓ ':''}${name}</span>
-            <span style="font-size:22px;font-weight:700;color:${isW?'#057a55':'#1a56db'}">${count}</span>
-          </div>
-          <div style="background:#e5e7eb;border-radius:4px;height:24px;overflow:hidden">
-            <div style="height:100%;background:${isW?'#057a55':'#1a56db'};border-radius:4px;width:${Math.round(count/max*100)}%;transition:width .5s"></div>
-          </div>
-        </div>`;
-      }).join('')}`;
-  } else if (v1s !== 'inactive') {
-    const sorted = Object.entries(s.vote1?.results||{}).sort((a,b)=>b[1]-a[1]);
-    const max = Math.max(...sorted.map(e=>e[1]),1);
-    const winnerSet = new Set(s.vote1?.winners||[]);
-    content = `<div style="font-size:20px;color:#6b7280;margin-bottom:6px">1. kör — Tagválasztás</div>
-      <div style="font-size:14px;color:#9ca3af;margin-bottom:2rem">Szavazatok: ${s.vote1?.voterCount||0}</div>
-      ${sorted.slice(0,15).map(([name,count]) => {
-        const isW = winnerSet.has(name) && v1s==='closed';
-        return `<div style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:18px;font-weight:${isW?'700':'400'};color:${isW?'#057a55':'inherit'}">${isW?'✓ ':''}${name}</span>
-            <span style="font-size:18px;font-weight:600;color:${isW?'#057a55':'#1a56db'}">${count}</span>
-          </div>
-          <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
-            <div style="height:100%;background:${isW?'#057a55':'#1a56db'};border-radius:4px;width:${Math.round(count/max*100)}%;transition:width .5s"></div>
-          </div>
-        </div>`;
-      }).join('')}`;
-  } else {
-    content = `<div style="text-align:center;padding:4rem;color:#9ca3af;font-size:20px">Várakozás a szavazás kezdetére...</div>`;
+        </div>
+        <div style="font-size:18px;color:#9ca3af">Várakozás a szavazás kezdetére...</div>
+      </div>
+    </div>`);
+    setTimeout(()=>makeProjQRs(220), 80);
+    return;
   }
 
-  document.getElementById('app').innerHTML = `
-    <div style="max-width:900px;margin:0 auto;padding:2rem">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2rem">
-        <h1 style="font-size:32px">${title}</h1>
-        <span style="font-size:13px;color:#9ca3af">Élő eredmény</span>
-      </div>
-      ${content}
-    </div>`;
+  // Eredmény + QR oldalsáv
+  let results = '';
+  if (activeOff) {
+    const res=s.vote2?.results?.[activeOff]||{};
+    const sorted=Object.entries(res).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(...sorted.map(e=>e[1]),1);
+    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${activeOff} szavazás</div>
+      <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">Leadott szavazat: ${sorted.reduce((a,b)=>a+b[1],0)}</div>
+      ${sorted.map(([n,c])=>`<div style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:22px;font-weight:600">${n}</span>
+          <span style="font-size:22px;font-weight:700;color:#1a56db">${c}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:6px;height:28px;overflow:hidden">
+          <div style="height:100%;background:#1a56db;border-radius:6px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+        </div>
+      </div>`).join('')}`;
+  } else if (lastClosed) {
+    const res=s.vote2?.results?.[lastClosed]||{};
+    const sorted=Object.entries(res).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(...sorted.map(e=>e[1]),1);
+    const win=s.vote2?.officeWinners?.[lastClosed];
+    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">${lastClosed} — Eredmény</div>
+      ${win?`<div style="font-size:32px;font-weight:700;color:#057a55;margin-bottom:1.5rem">✓ Megválasztva: ${win}</div>`:''}
+      ${sorted.map(([n,c])=>{const w=win===n;return `<div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:20px;font-weight:${w?'700':'400'};color:${w?'#057a55':'inherit'}">${w?'✓ ':''}${n}</span>
+          <span style="font-size:20px;font-weight:700;color:${w?'#057a55':'#1a56db'}">${c}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:24px;overflow:hidden">
+          <div style="height:100%;background:${w?'#057a55':'#1a56db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+        </div>
+      </div>`;}).join('')}`;
+  } else {
+    const sorted=Object.entries(s.vote1?.results||{}).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(...sorted.map(e=>e[1]),1);
+    const ws=new Set(s.vote1?.winners||[]);
+    results=`<div style="font-size:20px;color:#6b7280;margin-bottom:6px">1. kör — Tagválasztás</div>
+      <div style="font-size:14px;color:#9ca3af;margin-bottom:1.5rem">Leadott szavazat: ${s.vote1?.voterCount||0}</div>
+      ${sorted.slice(0,15).map(([n,c])=>{const w=ws.has(n)&&v1s==='closed';return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:18px;font-weight:${w?'700':'400'};color:${w?'#057a55':'inherit'}">${w?'✓ ':''}${n}</span>
+          <span style="font-size:18px;font-weight:600;color:${w?'#057a55':'#1a56db'}">${c}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
+          <div style="height:100%;background:${w?'#057a55':'#1a56db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+        </div>
+      </div>`;}).join('')}`;
+  }
+
+  R(`<div class="proj-wrap">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem">
+      <h1 style="font-size:28px">${title}</h1>
+      <span style="font-size:13px;color:#9ca3af">Élő eredmény</span>
+    </div>
+    <div class="proj-qr-row">
+      <div class="proj-results">${results}</div>
+      ${qrSide}
+    </div>
+  </div>`);
+  setTimeout(()=>makeProjQRs(120), 80);
+}
+
+function makeProjQRs(size) {
+  [['pqr1',voterUrl()],['pqr2',r2Url()]].forEach(([id,url])=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='';
+    new QRCode(el,{text:url,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+  });
 }
 
 // ══════════════════════════════════════
 // AKCIÓK
 // ══════════════════════════════════════
-function esc(s){ return s.replace(/'/g,"\\'"); }
-
-window.setTab = t => { window._adminTab = t; renderAdmin(); };
+window.setTab = t => { window._tab=t; renderAdmin(); };
 
 window.saveSettings = async () => {
-  const title = document.getElementById('set-title').value.trim();
-  const subtitle = document.getElementById('set-subtitle').value.trim();
-  const offices = document.getElementById('set-offices').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  await update(ref(db,'state/settings'), {title, subtitle, offices});
+  const title=document.getElementById('s-title').value.trim();
+  const sub=document.getElementById('s-sub').value.trim();
+  const offices=document.getElementById('s-offices').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  await update(ref(db,'state/settings'),{title,subtitle:sub,offices});
   alert('Mentve!');
 };
 
-window.handleFile = input => {
-  const file = input.files[0]; if(!file) return;
-  const ext = file.name.split('.').pop().toLowerCase();
-  const reader = new FileReader();
+window.handleFile = inp => {
+  const file=inp.files[0]; if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
   if(ext==='xlsx'||ext==='xls') {
-    reader.onload = async e => {
-      const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
-      const wb = XLSX.read(e.target.result,{type:'array'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(ws,{header:1});
-      const names = data.flat().map(v=>String(v).trim()).filter(v=>v&&v.length>1).slice(0,45);
-      document.getElementById('names-input').value = names.join('\n');
+    reader.onload=async e=>{
+      const X=await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+      const wb=X.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=X.utils.sheet_to_json(ws,{header:1});
+      document.getElementById('ni').value=data.flat().map(v=>String(v).trim()).filter(v=>v&&v.length>1).slice(0,45).join('\n');
     };
     reader.readAsArrayBuffer(file);
   } else {
-    reader.onload = e => {
-      document.getElementById('names-input').value = e.target.result.split(/\r?\n|,|;/).map(s=>s.trim()).filter(Boolean).slice(0,45).join('\n');
-    };
+    reader.onload=e=>{ document.getElementById('ni').value=e.target.result.split(/\r?\n|,|;/).map(s=>s.trim()).filter(Boolean).slice(0,45).join('\n'); };
     reader.readAsText(file,'UTF-8');
   }
 };
 
-window.loadDemo = () => {
-  document.getElementById('names-input').value = ['Kovács János','Nagy Péter','Szabó Anna','Tóth Zoltán','Horváth Éva','Varga László','Kiss Mária','Molnár Gábor','Fekete Katalin','Balogh Tibor','Simon Ágnes','Papp Norbert','Takács Judit','Juhász Bence','Lukács Dóra','Farkas Attila','Szőke Réka','Balog Imre','Fodor Szilvia','Oláh Tamás','Sárosi Vera','Kelemen Antal','Nemes Hajnalka','Fekete Róbert','Vincze Kinga','Csizmadia Béla','Halász Tünde','Orbán Csaba','Pálfi Eszter','Rácz Levente','Bíró Margit','Gál Sándor','Hegedűs Ildikó','Magyar Zoltán','Pintér Krisztina','Vásárhelyi Péter','Zsoldos Andrea','Máté István','Virág Zsuzsa','Kardos Dávid','Demeter Nikolett','Fehér Árpád','Bogdán Tímea','Csonka Viktor','Erdős Borbála'].join('\n');
+window.loadDemo = () => { document.getElementById('ni').value='Kovács János\nNagy Péter\nSzabó Anna\nTóth Zoltán\nHorváth Éva\nVarga László\nKiss Mária\nMolnár Gábor\nFekete Katalin\nBalogh Tibor\nSimon Ágnes\nPapp Norbert\nTakács Judit\nJuhász Bence\nLukács Dóra\nFarkas Attila\nSzőke Réka\nBalog Imre\nFodor Szilvia\nOláh Tamás\nSárosi Vera\nKelemen Antal\nNemes Hajnalka\nFekete Róbert\nVincze Kinga\nCsizmadia Béla\nHalász Tünde\nOrbán Csaba\nPálfi Eszter\nRácz Levente\nBíró Margit\nGál Sándor\nHegedűs Ildikó\nMagyar Zoltán\nPintér Krisztina\nVásárhelyi Péter\nZsoldos Andrea\nMáté István\nVirág Zsuzsa\nKardos Dávid\nDemeter Nikolett\nFehér Árpád\nBogdán Tímea\nCsonka Viktor\nErdős Borbála'; };
+
+window.saveCands = async () => {
+  const cands=document.getElementById('ni').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,45);
+  const res={}; cands.forEach(c=>res[c]=0);
+  await update(ref(db,'state/vote1'),{candidates:cands,results:res,status:'inactive',voterCount:0,log:{}});
+  document.getElementById('cp').textContent=cands.length+' jelölt elmentve';
 };
 
-window.saveCandidates = async () => {
-  const raw = document.getElementById('names-input').value;
-  const candidates = raw.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,45);
-  const results = {}; candidates.forEach(c => results[c]=0);
-  await update(ref(db,'state/vote1'), {candidates, results, status:'inactive', voterCount:0, log:{}});
-  document.getElementById('cand-preview').textContent = candidates.length + ' jelölt elmentve';
-};
-
-window.startVote1 = async () => {
+window.startV1 = async () => {
   if(!dbState.vote1?.candidates?.length){alert('Töltsd be a jelölteket!');return;}
   await update(ref(db,'state/vote1'),{status:'active'});
 };
-
-window.resetVote1 = async () => {
+window.resetV1 = async () => {
   if(!confirm('Reset? Minden szavazat törlődik!')) return;
-  const results = {}; (dbState.vote1?.candidates||[]).forEach(c=>results[c]=0);
-  await update(ref(db,'state/vote1'),{status:'inactive',results,winners:[],voterCount:0,log:{}});
-  localVotes1 = {};
+  const res={}; (dbState.vote1?.candidates||[]).forEach(c=>res[c]=0);
+  await update(ref(db,'state/vote1'),{status:'inactive',results:res,winners:[],voterCount:0,log:{}});
+  localVotes1={};
+};
+window.closeV1 = async () => {
+  const sorted=Object.entries(dbState.vote1?.results||{}).sort((a,b)=>b[1]-a[1]);
+  await update(ref(db,'state/vote1'),{status:'closed',winners:sorted.slice(0,11).map(e=>e[0])});
 };
 
-window.closeVote1 = async () => {
-  const sorted = Object.entries(dbState.vote1?.results||{}).sort((a,b)=>b[1]-a[1]);
-  const winners = sorted.slice(0,11).map(e=>e[0]);
-  await update(ref(db,'state/vote1'),{status:'closed',winners});
+window.delV1 = async did => {
+  if(!confirm('Törlöd ezt a szavazatot?')) return;
+  const entry=dbState.vote1?.log?.[did]; if(!entry) return;
+  const upd={};
+  (entry.votes||[]).forEach(c=>{ upd[`state/vote1/results/${c}`]=Math.max((dbState.vote1?.results?.[c]||1)-1,0); });
+  upd['state/vote1/voterCount']=Math.max((dbState.vote1?.voterCount||1)-1,0);
+  upd[`state/vote1/log/${did}`]=null;
+  await update(ref(db),upd);
 };
 
-window.deleteVote = async deviceId => {
-  if(!confirm('Törlöd ezt a szavazatot? A szavazatok visszavonódnak.')) return;
-  const entry = dbState.vote1?.log?.[deviceId];
-  if(!entry) return;
-  const updates = {};
-  (entry.votes||[]).forEach(c => {
-    const cur = dbState.vote1?.results?.[c]||0;
-    if(cur > 0) updates[`state/vote1/results/${c}`] = cur-1;
-  });
-  const vc = Math.max((dbState.vote1?.voterCount||1)-1, 0);
-  updates['state/vote1/voterCount'] = vc;
-  updates[`state/vote1/log/${deviceId}`] = null;
-  await update(ref(db), updates);
+window.toggleNom = async (off,name) => {
+  const noms=[...(dbState.vote2?.nominees?.[off]||[])];
+  const idx=noms.indexOf(name);
+  if(idx>=0) noms.splice(idx,1); else if(noms.length<4) noms.push(name);
+  await update(ref(db,'state/vote2/nominees'),{[off]:noms});
 };
 
-window.toggleNominee = async (office, name) => {
-  const nominees = [...(dbState.vote2?.nominees?.[office]||[])];
-  const idx = nominees.indexOf(name);
-  if(idx>=0) nominees.splice(idx,1); else if(nominees.length<4) nominees.push(name);
-  await update(ref(db,`state/vote2/nominees`),{[office]:nominees});
+window.startOff = async off => {
+  const noms=dbState.vote2?.nominees?.[off]||[];
+  if(!noms.length){alert('Jelöld ki a jelölteket!');return;}
+  const res={}; noms.forEach(n=>res[n]=0);
+  await update(ref(db,'state/vote2/status'),{[off]:'active'});
+  await update(ref(db,'state/vote2/results'),{[off]:res});
+};
+window.resetOff = async off => {
+  if(!confirm(`Reset: ${off}?`)) return;
+  const noms=dbState.vote2?.nominees?.[off]||[];
+  const res={}; noms.forEach(n=>res[n]=0);
+  await update(ref(db,'state/vote2/status'),{[off]:'inactive'});
+  await update(ref(db,'state/vote2/results'),{[off]:res});
+  await update(ref(db,'state/vote2/officeWinners'),{[off]:null});
+  votedOffices.delete(off);
+};
+window.closeOff = async off => {
+  const res=dbState.vote2?.results?.[off]||{};
+  const win=Object.entries(res).sort((a,b)=>b[1]-a[1])[0]?.[0]||null;
+  await update(ref(db,'state/vote2/status'),{[off]:'closed'});
+  if(win) await update(ref(db,'state/vote2/officeWinners'),{[off]:win});
 };
 
-window.startOffice = async office => {
-  const nominees = dbState.vote2?.nominees?.[office]||[];
-  if(!nominees.length){alert('Jelöld ki a jelölteket!');return;}
-  const results = {}; nominees.forEach(n=>results[n]=0);
-  await update(ref(db,`state/vote2/status`),{[office]:'active'});
-  await update(ref(db,`state/vote2/results`),{[office]:results});
+window.delV2 = async (key, off, vote) => {
+  if(!confirm('Törlöd ezt a 2. köri szavazatot?')) return;
+  const upd={};
+  if(off&&vote) { upd[`state/vote2/results/${off}/${vote}`]=Math.max((dbState.vote2?.results?.[off]?.[vote]||1)-1,0); }
+  upd[`state/vote2/voterCount/${off}`]=Math.max((dbState.vote2?.voterCount?.[off]||1)-1,0);
+  upd[`state/vote2/log/${key}`]=null;
+  await update(ref(db),upd);
 };
 
-window.resetOffice = async office => {
-  if(!confirm(`Reset: ${office}?`)) return;
-  const nominees = dbState.vote2?.nominees?.[office]||[];
-  const results = {}; nominees.forEach(n=>results[n]=0);
-  await update(ref(db,`state/vote2/status`),{[office]:'inactive'});
-  await update(ref(db,`state/vote2/results`),{[office]:results});
-  await update(ref(db,`state/vote2/officeWinners`),{[office]:null});
-  votedOffices.delete(office);
-};
-
-window.closeOffice = async office => {
-  const res = dbState.vote2?.results?.[office]||{};
-  const winner = Object.entries(res).sort((a,b)=>b[1]-a[1])[0]?.[0]||null;
-  await update(ref(db,`state/vote2/status`),{[office]:'closed'});
-  if(winner) await update(ref(db,`state/vote2/officeWinners`),{[office]:winner});
-};
-
-window.toggleV1 = (name, checked) => { localVotes1[name]=checked; renderVoter1(); };
-
-window.submitV1 = async () => {
-  const picked = Object.keys(localVotes1).filter(k=>localVotes1[k]);
+window.tv1 = (n,ch) => { localVotes1[n]=ch; renderVoter1(); };
+window.subV1 = async () => {
+  const picked=Object.keys(localVotes1).filter(k=>localVotes1[k]);
   if(!picked.length){alert('Válassz legalább egy jelöltet!');return;}
-  const updates = {};
-  picked.forEach(c => { updates[`state/vote1/results/${c}`] = (dbState.vote1?.results?.[c]||0)+1; });
-  updates['state/vote1/voterCount'] = (dbState.vote1?.voterCount||0)+1;
-  updates[`state/vote1/log/${DEVICE_ID}`] = { ts: Date.now(), votes: picked };
-  await update(ref(db), updates);
-  localVotes1 = {};
+  const upd={};
+  picked.forEach(c=>{ upd[`state/vote1/results/${c}`]=(dbState.vote1?.results?.[c]||0)+1; });
+  upd['state/vote1/voterCount']=(dbState.vote1?.voterCount||0)+1;
+  upd[`state/vote1/log/${DID}`]={ts:Date.now(),votes:picked};
+  await update(ref(db),upd);
+  localVotes1={};
 };
 
-window.selectName = name => { localVoterName = name; confirmingName = true; renderRound2(); };
-window.confirmName = async () => {
-  confirmingName = false;
-  await update(ref(db,`state/vote2/loggedIn`),{[localVoterName.replace(/ /g,'_')]:true});
+window.selName = n => { voterName=n; confirming=true; renderRound2(); };
+window.confName = async () => {
+  confirming=false;
+  await update(ref(db,'state/vote2/loggedIn'),{[voterName.replace(/ /g,'_')]:true});
   renderRound2();
 };
-window.cancelName = () => { localVoterName = null; confirmingName = false; renderRound2(); };
+window.cancName = () => { voterName=null; confirming=false; renderRound2(); };
 
-window.submitOffice = async office => {
-  const pick = document.querySelector('input[name="pick"]:checked')?.value;
+window.subOff = async off => {
+  const pick=document.querySelector('input[name="pick"]:checked')?.value;
   if(!pick){alert('Válassz egy jelöltet!');return;}
-  const cur = dbState.vote2?.results?.[office]?.[pick]||0;
-  const vc = (dbState.vote2?.voterCount?.[office]||0)+1;
-  await update(ref(db,`state/vote2/results/${office}`),{[pick]:cur+1});
-  await update(ref(db,`state/vote2/voterCount`),{[office]:vc});
-  votedOffices.add(office);
+  const cur=(dbState.vote2?.results?.[off]?.[pick]||0);
+  const vc=(dbState.vote2?.voterCount?.[off]||0)+1;
+  const logKey=`${voterName.replace(/ /g,'_')}_${off.replace(/ /g,'_')}`;
+  const upd={};
+  upd[`state/vote2/results/${off}/${pick}`]=cur+1;
+  upd[`state/vote2/voterCount/${off}`]=vc;
+  upd[`state/vote2/log/${logKey}`]={ts:Date.now(),voterName,office:off,vote:pick};
+  await update(ref(db),upd);
+  votedOffices.add(off);
   renderRound2();
 };
 </script>
