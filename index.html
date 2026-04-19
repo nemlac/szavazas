@@ -113,10 +113,11 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // ── URL alapú routing ──
-const path = window.location.pathname.replace(/\/$/, '');
-const isAdmin = path.endsWith('/admin');
-const isProjector = path.endsWith('/kivetito');
-const isRound2 = path.endsWith('/2kor');
+const params = new URLSearchParams(window.location.search);
+const mode = params.get('mode') || 'voter1';
+const isAdmin = mode === 'admin';
+const isProjector = mode === 'kivetito';
+const isRound2 = mode === '2kor';
 
 // ── Helyi állapot ──
 let localVoterName = null;
@@ -244,9 +245,9 @@ function renderAdminControl(s) {
     </div>`;
   }).join('');
 
-  const baseUrl = window.location.origin;
-  const round2Url = baseUrl + '/2kor';
-  const projUrl = baseUrl + '/kivetito';
+  const baseUrl = window.location.href.split('?')[0];
+  const round2Url = baseUrl + '?mode=2kor';
+  const projUrl = baseUrl + '?mode=kivetito';
 
   return `
     <div>
