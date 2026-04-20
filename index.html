@@ -148,9 +148,22 @@ let votedOffices = new Set();
 
 onValue(ref(db,'state'), snap => { dbState = snap.val() || {}; render(); });
 
-// Kivetítőn másodpercenkénti frissítés (időmérő + belépési számláló)
+// Kivetítőn másodpercenkénti frissítés - csak az időmérő elemét
 if (isProjector) {
-  setInterval(() => render(), 3000);
+  setInterval(() => {
+    const el = document.getElementById('proj-timer');
+    if (!el) return;
+    const entryLog = dbState.vote1?.entryLog || {};
+    const lastTs = Object.keys(entryLog).length > 0
+      ? Math.max(...Object.values(entryLog).map(e=>e.ts||0)) : null;
+    if (!lastTs) return;
+    const secAgo = Math.round((Date.now() - lastTs) / 1000);
+    const timeStr = secAgo < 60 ? `${secAgo} mp` : `${Math.round(secAgo/60)} perce`;
+    el.textContent = `Utolsó belépés: ${timeStr}`;
+    // Belépési számláló is
+    const cnt = document.getElementById('proj-entry-count');
+    if (cnt) cnt.textContent = Object.keys(entryLog).length;
+  }, 1000);
 }
 
 const esc = s => String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -613,29 +626,40 @@ function renderProjector() {
     const entryLog = s.vote1?.entryLog || {};
     const entryCount = Object.keys(entryLog).length;
     const lastTs = entryCount > 0 ? Math.max(...Object.values(entryLog).map(e=>e.ts||0)) : null;
-    const now = Date.now();
-    const secAgo = lastTs ? Math.round((now - lastTs)/1000) : null;
+    const secAgo = lastTs ? Math.round((Date.now() - lastTs)/1000) : null;
     const timeStr = secAgo === null ? '' : secAgo < 60 ? `${secAgo} mp` : `${Math.round(secAgo/60)} perce`;
     const isPre = v1s === 'pre';
-    R(`<div class="proj-wrap">
-      <h1 style="font-size:36px;text-align:center;margin-bottom:2rem">${title}</h1>
-      <div class="proj-waiting">
-        <div style="text-align:center">
-          <div class="proj-qr-big"><div id="pqr1"></div></div>
-          <div style="margin-top:10px;font-size:16px;color:#6b7280">1. kör szavazók</div>
+
+    if (isPre) {
+      // QR fázis: nagy QR + belépési számláló
+      R(`<div class="proj-wrap">
+        <h1 style="font-size:32px;text-align:center;margin-bottom:2rem">${title}</h1>
+        <div class="proj-waiting">
+          <div style="text-align:center">
+            <div class="proj-qr-big"><div id="pqr1"></div></div>
+            <div style="margin-top:10px;font-size:16px;color:#6b7280">Olvasd be a QR kódot!</div>
+          </div>
+          <div style="text-align:center">
+            <div id="proj-entry-count" style="font-size:72px;font-weight:700;color:#1a56db">${entryCount}</div>
+            <div style="font-size:22px;color:#6b7280;margin-bottom:8px">fő csatlakozott</div>
+            <div id="proj-timer" style="font-size:16px;color:#9ca3af">
+              ${lastTs ? `Utolsó belépés: ${timeStr}` : 'Még senki nem csatlakozott'}
+            </div>
+          </div>
+          <div style="font-size:16px;color:#9ca3af">Várakozás a szavazás indítására...</div>
         </div>
-        ${isPre ? `<div style="text-align:center">
-          <div style="font-size:64px;font-weight:700;color:#1a56db">${entryCount}</div>
-          <div style="font-size:20px;color:#6b7280;margin-bottom:6px">fő csatlakozott</div>
-          ${lastTs
-            ? `<div style="font-size:16px;color:#9ca3af">Utolsó belépés: <b style="color:#6b7280">${timeStr}</b></div>`
-            : `<div style="font-size:16px;color:#9ca3af">Még senki nem csatlakozott</div>`}
+      </div>`);
+      setTimeout(()=>{ makeProjQR('pqr1',voterUrl(),220); }, 80);
+    } else {
+      // Nyitóképernyő: nincs QR, csak szöveg
+      R(`<div class="proj-wrap">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;gap:2rem">
+          <h1 style="font-size:42px;font-weight:700">${title}</h1>
+          <div style="font-size:28px;color:#374151">Rövidesen kezdődik a szavazás!</div>
+          <div style="font-size:22px;color:#6b7280">Kérjük készítsék elő mobiljaikat.</div>
         </div>
-        <div style="font-size:16px;color:#9ca3af">Várakozás a szavazás indítására...</div>`
-        : `<div style="font-size:18px;color:#9ca3af">Olvasd be a QR kódot a csatlakozáshoz</div>`}
-      </div>
-    </div>`);
-    setTimeout(()=>{ makeProjQR('pqr1',voterUrl(),220); }, 80);
+      </div>`);
+    }
     return;
   }
 
