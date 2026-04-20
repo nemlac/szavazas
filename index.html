@@ -315,9 +315,10 @@ function tabControl(s) {
     ${tieWarnV1}
     <div class="ctrl-row">
       <span class="ctrl-name">1. kör — tagválasztás</span>
-      <span class="badge ${{inactive:'b-inactive',active:'b-active',closed:'b-closed',runoff:'b-runoff'}[v1s]||'b-inactive'}">${{inactive:'Inaktív',active:'Aktív',closed:'Lezárva',runoff:'Pótszavazás'}[v1s]||v1s}</span>
-      <span style="font-size:13px;color:#6b7280">${s.vote1?.voterCount||0} szavazat</span>
-      <button class="btn btn-success btn-sm" onclick="startV1()">Indítás</button>
+      <span class="badge ${{inactive:'b-inactive',pre:'b-inactive',active:'b-active',closed:'b-closed',runoff:'b-runoff'}[v1s]||'b-inactive'}">${{inactive:'Inaktív',pre:'QR aktív',active:'Aktív',closed:'Lezárva',runoff:'Pótszavazás'}[v1s]||v1s}</span>
+      <span style="font-size:13px;color:#6b7280">${Object.keys(s.vote1?.entryLog||{}).length} belépett / ${s.vote1?.voterCount||0} szavazott</span>
+      <button class="btn btn-outline btn-sm" onclick="preV1()" title="QR megjelenítése, belépések gyűjtése">QR megjelenítése</button>
+      <button class="btn btn-success btn-sm" onclick="startV1()">Szavazás indítása</button>
       <button class="btn btn-outline btn-sm" onclick="resetV1()">Reset</button>
       <button class="btn btn-danger btn-sm" onclick="closeV1(false)">Lezárás</button>
     </div>
@@ -477,11 +478,25 @@ function renderVoter1() {
   const status = s.vote1?.status || 'inactive';
   const cands = status==='runoff' ? (s.vote1?.runoffCandidates||[]) : (s.vote1?.candidates||[]);
   const voted = s.vote1?.log?.[DID];
+  // Pre fázisban automatikusan logoljuk a belépést
+  if (status==='pre' && !s.vote1?.entryLog?.[DID]) {
+    update(ref(db,`state/vote1/entryLog/${DID}`), { ts: Date.now() });
+  }
+
   let body = '';
   if (voted) {
     body=`<div class="success-screen"><div class="success-icon">✅</div><h2>Már szavaztál!</h2><p style="color:#6b7280;margin-top:8px">Szavazatod rögzítve.</p><div class="device-id-box">Eszköz azonosítód: <b>${DID}</b></div></div>`;
   } else if (status==='inactive') {
     body=`<div class="info" style="text-align:center;padding:2rem">A szavazás még nem kezdődött el.</div>`;
+  } else if (status==='pre') {
+    const entryCount = Object.keys(s.vote1?.entryLog||{}).length;
+    body=`<div class="success-screen">
+      <div class="success-icon">✅</div>
+      <h2>Csatlakozva!</h2>
+      <p style="color:#6b7280;margin-top:8px">Felkészültél a szavazásra.<br>Várd meg az admin jelzését.</p>
+      <div style="font-size:14px;color:#9ca3af;margin-top:12px">${entryCount} fő csatlakozott eddig</div>
+      <div class="device-id-box">Eszköz azonosítód: <b>${DID}</b></div>
+    </div>`;
   } else if (status==='closed') {
     body=`<div class="info" style="text-align:center;padding:2rem">A szavazás lezárult.</div>`;
   } else if (status==='runoff') {
@@ -580,7 +595,8 @@ function renderProjector() {
   const v1s = s.vote1?.status || 'inactive';
   const activeOff = offices.find(o=>['active','runoff'].includes(s.vote2?.status?.[o]));
   const lastClosed = [...offices].reverse().find(o=>s.vote2?.status?.[o]==='closed');
-  const anyVote = v1s!=='inactive' || activeOff || lastClosed;
+  const anyVote = !['inactive','pre'].includes(v1s) || activeOff || lastClosed;
+  const isPre = v1s === 'pre' && !anyVote;
 
   // QR: 2. kör aktív → 2. kör QR, egyébként mindig 1. kör QR
   const showR2QR = !!(activeOff || lastClosed);
@@ -595,7 +611,8 @@ function renderProjector() {
     const lastTs = entryCount > 0 ? Math.max(...Object.values(entryLog).map(e=>e.ts||0)) : null;
     const now = Date.now();
     const secAgo = lastTs ? Math.round((now - lastTs)/1000) : null;
-    const timeStr = secAgo === null ? '' : secAgo < 60 ? `${secAgo} másodperce` : `${Math.round(secAgo/60)} perce`;
+    const timeStr = secAgo === null ? '' : secAgo < 60 ? `${secAgo} mp` : `${Math.round(secAgo/60)} perce`;
+    const isPre = v1s === 'pre';
     R(`<div class="proj-wrap">
       <h1 style="font-size:36px;text-align:center;margin-bottom:2rem">${title}</h1>
       <div class="proj-waiting">
@@ -603,12 +620,15 @@ function renderProjector() {
           <div class="proj-qr-big"><div id="pqr1"></div></div>
           <div style="margin-top:10px;font-size:16px;color:#6b7280">1. kör szavazók</div>
         </div>
-        <div style="text-align:center">
-          <div style="font-size:48px;font-weight:700;color:#1a56db">${entryCount}</div>
-          <div style="font-size:18px;color:#6b7280">fő csatlakozott</div>
-          ${lastTs ? `<div style="font-size:14px;color:#9ca3af;margin-top:6px">Utolsó belépés: <b>${timeStr}</b></div>` : ''}
+        ${isPre ? `<div style="text-align:center">
+          <div style="font-size:64px;font-weight:700;color:#1a56db">${entryCount}</div>
+          <div style="font-size:20px;color:#6b7280;margin-bottom:6px">fő csatlakozott</div>
+          ${lastTs
+            ? `<div style="font-size:16px;color:#9ca3af">Utolsó belépés: <b style="color:#6b7280">${timeStr}</b></div>`
+            : `<div style="font-size:16px;color:#9ca3af">Még senki nem csatlakozott</div>`}
         </div>
-        <div style="font-size:18px;color:#9ca3af">Várakozás a szavazás kezdetére...</div>
+        <div style="font-size:16px;color:#9ca3af">Várakozás a szavazás indítására...</div>`
+        : `<div style="font-size:18px;color:#9ca3af">Olvasd be a QR kódot a csatlakozáshoz</div>`}
       </div>
     </div>`);
     setTimeout(()=>{ makeProjQR('pqr1',voterUrl(),220); }, 80);
@@ -747,10 +767,15 @@ window.saveCands = async () => {
   document.getElementById('cp').textContent=cands.length+' jelölt elmentve';
 };
 
+window.preV1 = async () => {
+  if(!dbState.vote1?.candidates?.length){alert('Töltsd be a jelölteket!');return;}
+  await update(ref(db,'state/vote1'),{status:'pre',entryLog:{},voterCount:0,log:{}});
+};
+
 window.startV1 = async () => {
   if(!dbState.vote1?.candidates?.length){alert('Töltsd be a jelölteket!');return;}
   const res={}; (dbState.vote1.candidates).forEach(c=>res[c]=0);
-  await update(ref(db,'state/vote1'),{status:'active',results:res,voterCount:0,log:{},entryLog:{}});
+  await update(ref(db,'state/vote1'),{status:'active',results:res,voterCount:0,log:{}});
 };
 
 window.resetV1 = async () => {
@@ -850,14 +875,7 @@ window.delV2 = async (key,off,vote) => {
   await update(ref(db),upd);
 };
 
-// Belépés naplózása az 1. körnél
-async function logEntry() {
-  const s = dbState;
-  if (s.vote1?.status !== 'active' && s.vote1?.status !== 'runoff') return;
-  if (s.vote1?.entryLog?.[DID]) return; // már be van logolva
-  await update(ref(db,`state/vote1/entryLog/${DID}`), { ts: Date.now() });
-}
-logEntry();
+
 
 window.tv1=(n,ch)=>{ localVotes1[n]=ch; renderVoter1(); };
 window.subV1=async()=>{
