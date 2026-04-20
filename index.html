@@ -148,9 +148,9 @@ let votedOffices = new Set();
 
 onValue(ref(db,'state'), snap => { dbState = snap.val() || {}; render(); });
 
-// Kivetítőn másodpercenkénti frissítés az időmérőhöz
+// Kivetítőn másodpercenkénti frissítés (időmérő + belépési számláló)
 if (isProjector) {
-  setInterval(() => { if (!dbState.vote1?.status || dbState.vote1?.status==='inactive') render(); }, 5000);
+  setInterval(() => render(), 3000);
 }
 
 const esc = s => String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -313,14 +313,18 @@ function tabControl(s) {
   return `
     <h2>Szavazások vezérlése</h2>
     ${tieWarnV1}
-    <div class="ctrl-row">
-      <span class="ctrl-name">1. kör — tagválasztás</span>
-      <span class="badge ${{inactive:'b-inactive',pre:'b-inactive',active:'b-active',closed:'b-closed',runoff:'b-runoff'}[v1s]||'b-inactive'}">${{inactive:'Inaktív',pre:'QR aktív',active:'Aktív',closed:'Lezárva',runoff:'Pótszavazás'}[v1s]||v1s}</span>
-      <span style="font-size:13px;color:#6b7280">${Object.keys(s.vote1?.entryLog||{}).length} belépett / ${s.vote1?.voterCount||0} szavazott</span>
-      <button class="btn btn-outline btn-sm" onclick="preV1()" title="QR megjelenítése, belépések gyűjtése">QR megjelenítése</button>
-      <button class="btn btn-success btn-sm" onclick="startV1()">Szavazás indítása</button>
-      <button class="btn btn-outline btn-sm" onclick="resetV1()">Reset</button>
-      <button class="btn btn-danger btn-sm" onclick="closeV1(false)">Lezárás</button>
+    <div class="ctrl-row" style="flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px">
+        <span class="ctrl-name">1. kör — tagválasztás</span>
+        <span class="badge ${{inactive:'b-inactive',pre:'b-inactive',active:'b-active',closed:'b-closed',runoff:'b-runoff'}[v1s]||'b-inactive'}">${{inactive:'Inaktív',pre:'QR aktív',active:'Aktív',closed:'Lezárva',runoff:'Pótszavazás'}[v1s]||v1s}</span>
+      </div>
+      <div style="font-size:12px;color:#6b7280;width:100%">${Object.keys(s.vote1?.entryLog||{}).length} belépett / ${s.vote1?.voterCount||0} szavazott</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="preV1()">QR</button>
+        <button class="btn btn-success btn-sm" onclick="startV1()">Indítás</button>
+        <button class="btn btn-outline btn-sm" onclick="resetV1()">Reset</button>
+        <button class="btn btn-danger btn-sm" onclick="closeV1(false)">Lezárás</button>
+      </div>
     </div>
     ${offices.map(off => {
       const st = s.vote2?.status?.[off] || 'inactive';
