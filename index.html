@@ -129,12 +129,23 @@ let localVotes = {};
 let voterCode = null;
 let voterCodeInput = '';
 
+// ── Auth — ez fut először ──
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+  // Ha kivetítő vagy mobil, nem kell auth
+  if (isKivetito || isMobil) return;
+  // Admin/kezelő: azonnal mutatjuk a login-t vagy a felületet
+  renderApp();
+});
+
 // ── Firebase listener ──
 onValue(ref(db,'szavazasok'), snap => { DB.szavazasok = snap.val() || {}; renderApp(); });
 onValue(ref(db,'aktiv'), snap => { DB.aktiv = snap.val() || null; renderApp(); });
 
-// ── Auth ──
-onAuthStateChanged(auth, user => { currentUser = user; renderApp(); });
+// ── Azonnali első render ──
+// Kivetítő és mobil nem vár auth-ra
+// Admin/kezelő: login képernyőt mutat amíg az auth meg nem érkezik
+renderApp();
 
 // ── Helpers ──
 const R = html => document.getElementById('root').innerHTML = html;
@@ -163,8 +174,11 @@ function getAktivSzavazas() {
 function renderApp() {
   if (isKivetito) { renderKivetito(); return; }
   if (isMobil) { renderMobil(); return; }
+  // Admin/kezelő: ha nincs user → login; ha van → felület
   if (!currentUser) { renderLogin(); return; }
-  if (isAdmin || isKezelo) { isAdmin ? renderAdmin() : renderKezelo(); return; }
+  if (isAdmin) { renderAdmin(); return; }
+  if (isKezelo) { renderKezelo(); return; }
+  // Ismeretlen mode → login
   renderLogin();
 }
 
