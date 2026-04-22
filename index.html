@@ -241,7 +241,7 @@ function renderAdmin() {
     </div>
     <div id="admin-tab">${renderAdminTab(tab)}</div>
   `));
-  if (tab==='kivetito') setTimeout(()=>makeQR('a-qr-mobil', mobilUrl(selectedSzavazasId||''), 140), 80);
+  if (tab==='kivetito') setTimeout(()=>makeQR('a-qr-mobil', mobilUrl(selectedSzavazasId||DB.aktiv||''), 140), 80);
 }
 
 window.setAdminTab = t => { window._adminTab=t; renderAdmin(); };
@@ -662,7 +662,8 @@ window.deleteNaploEntry = async kod => {
 };
 
 function tabKivetito() {
-  const mUrl = mobilUrl(selectedSzavazasId||'');
+  const szId = selectedSzavazasId || DB.aktiv || '';
+  const mUrl = mobilUrl(szId);
   return `
     <h2>QR kódok és linkek</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
@@ -670,6 +671,7 @@ function tabKivetito() {
         <div style="font-size:13px;font-weight:500;margin-bottom:8px">Szavazói QR</div>
         <div id="a-qr-mobil"></div>
         <div style="font-size:11px;color:#9ca3af;margin-top:6px;word-break:break-all">${mUrl}</div>
+        ${!szId?`<div style="color:#c81e1e;font-size:12px;margin-top:4px">⚠️ Nincs kiválasztott szavazás! Válassz a Szavazások fülön.</div>`:''}
       </div>
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem">
         <div style="font-size:13px;font-weight:500;margin-bottom:8px">Belső linkek</div>
@@ -905,7 +907,14 @@ function renderMobil() {
   const szId = P.get('s');
   if (!szId) { R(wrap('<div class="info">Hiányzó szavazás azonosító. Olvasd be a QR kódot!</div>')); return; }
   const sz = DB.szavazasok?.[szId];
-  if (!sz) { R(wrap('<div class="loading"><div class="spinner"></div><span>Betöltés...</span></div>')); return; }
+  if (!sz) {
+    if (Object.keys(DB.szavazasok||{}).length > 0) {
+      R(wrap(`<div class="error-box">Ismeretlen szavazás azonosító: <b>${szId}</b><br>Olvasd be újra a QR kódot!</div>`));
+    } else {
+      R(wrap('<div class="loading"><div class="spinner"></div><span>Betöltés...</span></div>'));
+    }
+    return;
+  }
 
   const allapot = sz.allapot||'pre';
   const title = sz.cim||'Szavazás';
