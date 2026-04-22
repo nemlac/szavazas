@@ -138,14 +138,6 @@ onAuthStateChanged(auth, user => {
   renderApp();
 });
 
-// ── Firebase listener ──
-onValue(ref(db,'szavazasok'), snap => { DB.szavazasok = snap.val() || {}; renderApp(); });
-onValue(ref(db,'aktiv'), snap => { DB.aktiv = snap.val() || null; renderApp(); });
-
-// ── Azonnali első render ──
-// Kivetítő és mobil nem vár auth-ra
-// Admin/kezelő: login képernyőt mutat amíg az auth meg nem érkezik
-renderApp();
 
 // ── Helpers ──
 const R = html => document.getElementById('root').innerHTML = html;
@@ -154,6 +146,14 @@ const esc = s => String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('hu') : '-';
 const secAgo = ts => ts ? Math.round((Date.now()-ts)/1000) : null;
 const timeStr = ts => { const s=secAgo(ts); if(!s) return ''; return s<60?`${s} mp`:`${Math.round(s/60)} perce`; };
+
+
+// ── Firebase listener ──
+onValue(ref(db,'szavazasok'), snap => { DB.szavazasok = snap.val() || {}; renderApp(); });
+onValue(ref(db,'aktiv'), snap => { DB.aktiv = snap.val() || null; renderApp(); });
+
+// ── Első render ──
+renderApp();
 
 function baseUrl() { return window.location.href.split('?')[0]; }
 function mobilUrl(szavazasId) { return `${baseUrl()}?mode=mobil&s=${szavazasId}`; }
@@ -234,7 +234,7 @@ function renderAdmin() {
     </div>
     <div class="tab-bar">
       <button class="tab ${tab==='szavazasok'?'active':''}" onclick="setAdminTab('szavazasok')">Szavazások</button>
-      <button class="tab ${tab==='vezерles'?'active':''}" onclick="setAdminTab('vezерles')">Vezérlés</button>
+      <button class="tab ${tab==='vezerles'?'active':''}" onclick="setAdminTab('vezerles')">Vezérlés</button>
       <button class="tab ${tab==='kodok'?'active':''}" onclick="setAdminTab('kodok')">Kódok</button>
       <button class="tab ${tab==='naplo'?'active':''}" onclick="setAdminTab('naplo')">Napló</button>
       <button class="tab ${tab==='kivetito'?'active':''}" onclick="setAdminTab('kivetito')">Kivetítő</button>
@@ -248,7 +248,7 @@ window.setAdminTab = t => { window._adminTab=t; renderAdmin(); };
 
 function renderAdminTab(tab) {
   if (tab==='szavazasok') return tabSzavazasok();
-  if (tab==='vezерles') return tabVezerles();
+  if (tab==='vezerles') return tabVezerles();
   if (tab==='kodok') return tabKodok();
   if (tab==='naplo') return tabNaplo();
   if (tab==='kivetito') return tabKivetito();
@@ -407,7 +407,8 @@ function renderEredmenyek(sz) {
   Object.entries(potRes).forEach(([k,v])=>{ allRes[k]=(allRes[k]||0)+v; });
   const sorted = Object.entries(allRes).sort((a,b)=>b[1]-a[1]);
   const max = Math.max(...sorted.map(e=>e[1]),1);
-  const tiedSet = new Set((sz.allapot==='potszavazas'?detectTie({results:allRes,jeloltek:sz.jeloltek||[],maxValaszt:sz.maxValaszt||1})?.tied)||[]);
+  const tieInfoRes = sz.allapot==='potszavazas' ? detectTie({results:allRes,jeloltek:sz.jeloltek||[],maxValaszt:sz.maxValaszt||1}) : null;
+  const tiedSet = new Set(tieInfoRes?.tied||[]);
 
   return `<h3 style="margin-top:1rem">Eredmény</h3>
     ${winners.size?`<div class="success-box">Nyertesek: <b>${[...winners].join(', ')}</b></div>`:''}
