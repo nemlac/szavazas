@@ -447,7 +447,7 @@ function tabVezerles() {
       ${allapot==='szavazas'?`<button class="btn btn-outline btn-sm" onclick="setAllapot('qr')">Vissza QR-re</button>`:''}
       ${allapot==='potszavazas'&&!potInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasPot()">Pótszavazás lezárása</button>`:''}
       ${allapot==='potszavazas'&&potInfo?`<div class="warn" style="width:100%"><h3>⚠️ Ismét holtverseny!</h3><p>${potInfo.tied.join(', ')}</p><div class="row"><button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Új pótszavazás</button><button class="btn btn-outline btn-sm" onclick="lezarasPot(true)">Lezárás így</button></div></div>`:''}
-      <button class="btn btn-outline btn-sm" onclick="resetSzavazas()">Reset</button>
+      <button class="btn btn-danger btn-sm" onclick="resetSzavazas()">Inaktiválás</button>
     </div>
 
     ${allapot==='lezarva'||allapot==='potszavazas' ? renderEredmenyek(sz) : ''}
@@ -545,10 +545,23 @@ window.lezarasPot = async (forceFirst=false) => {
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), { allapot:'lezarva', nyertesek });
 };
 window.resetSzavazas = async () => {
-  if(!confirm('Reset? Minden szavazat és belépés törlődik!')) return;
+  if(!confirm('Inaktiválás: minden szavazat, belépés és napló törlődik, a kódok újra felhasználhatók lesznek. Biztosan folytatod?')) return;
+  const sz = getSzavazas(); if(!sz) return;
+  // Kódok hasznalt státuszát visszaállítjuk
+  const kodUpd = {};
+  Object.keys(sz.kodok||{}).forEach(k => { kodUpd[k] = {hasznalt:false, letrehozva: sz.kodok[k].letrehozva||Date.now()}; });
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), {
-    allapot:'pre', eredmenyek:{}, potEredmenyek:{}, nyertesek:[],
-    belepo:{}, voterCount:0, lastVoteTs:null, potJeloltek:[], potSpotsNeeded:0
+    allapot:'pre',
+    eredmenyek:{},
+    potEredmenyek:{},
+    nyertesek:[],
+    belepo:{},
+    naplo:{},
+    voterCount:0,
+    lastVoteTs:null,
+    potJeloltek:[],
+    potSpotsNeeded:0,
+    kodok: Object.keys(kodUpd).length ? kodUpd : {}
   });
 };
 window.downloadEredmeny = () => {
