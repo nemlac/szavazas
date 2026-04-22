@@ -503,8 +503,20 @@ window.setAktiv = async () => {
 window.setAllapot = async (a) => {
   if (!selectedSzavazasId) return;
   const upd = { allapot: a };
-  if (a==='qr') { upd.belepo={}; upd.voterCount=0; upd.lastVoteTs=null; }
-  if (a==='szavazas') { upd.eredmenyek={}; upd.voterCount=0; upd.lastVoteTs=null; (getSzavazas()?.jeloltek||[]).forEach(j=>{ upd[`eredmenyek/${j.replace(/\./g,'_')}`]=0; }); }
+  if (a==='qr') {
+    upd.belepo = {};
+    upd.voterCount = 0;
+    upd.lastVoteTs = null;
+  }
+  if (a==='szavazas') {
+    // Eredmények inicializálása külön objektumként
+    const eredmenyek = {};
+    (getSzavazas()?.jeloltek||[]).forEach(j => { eredmenyek[j] = 0; });
+    upd.eredmenyek = eredmenyek;
+    upd.voterCount = 0;
+    upd.lastVoteTs = null;
+    upd.naplo = {};
+  }
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), upd);
 };
 window.lezaras = async (forceFirst=false) => {
