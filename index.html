@@ -442,7 +442,9 @@ function tabVezerles() {
       ${!isAktiv?`<button class="btn btn-outline btn-sm" onclick="setAktiv()">Aktívvá tesz</button>`:''}
       ${allapot==='pre'?`<button class="btn btn-primary btn-sm" onclick="setAllapot('qr')">QR megjelenítése</button>`:''}
       ${allapot==='qr'?`<button class="btn btn-success btn-sm" onclick="setAllapot('szavazas')">Szavazás indítása</button>`:''}
+      ${allapot==='qr'?`<button class="btn btn-outline btn-sm" onclick="setAllapot('pre')">Vissza PRE-re</button>`:''}
       ${allapot==='szavazas'&&!tieInfo?`<button class="btn btn-danger btn-sm" onclick="lezaras(false)">Lezárás</button>`:''}
+      ${allapot==='szavazas'?`<button class="btn btn-outline btn-sm" onclick="setAllapot('qr')">Vissza QR-re</button>`:''}
       ${allapot==='potszavazas'&&!potInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasPot()">Pótszavazás lezárása</button>`:''}
       ${allapot==='potszavazas'&&potInfo?`<div class="warn" style="width:100%"><h3>⚠️ Ismét holtverseny!</h3><p>${potInfo.tied.join(', ')}</p><div class="row"><button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Új pótszavazás</button><button class="btn btn-outline btn-sm" onclick="lezarasPot(true)">Lezárás így</button></div></div>`:''}
       <button class="btn btn-outline btn-sm" onclick="resetSzavazas()">Reset</button>
@@ -945,15 +947,18 @@ function renderMobil() {
     const maxV = allapot==='potszavazas' ? (sz.potSpotsNeeded||1) : (sz.maxValaszt||1);
     const checked = Object.keys(localVotes).filter(k=>localVotes[k]);
 
+    // Jelöltek listáját globálisan tároljuk, hogy index alapján érjük el
+    window._currentJeloltek = jeloltek;
+
     R(wrap(`
       <h1>${title}${allapot==='potszavazas'?' — Pótszavazás':''}</h1>
       ${allapot==='potszavazas'?`<div class="warn"><p>Holtverseny miatt pótszavazás. Válassz <b>${maxV}</b> jelöltet!</p></div>`:''}
       <div class="counter">Kiválasztva: <span>${checked.length}</span> / ${maxV}</div>
       <div class="cand-grid">
-        ${jeloltek.map(c=>{
+        ${jeloltek.map((c,i)=>{
           const ch=!!localVotes[c], dis=!ch&&checked.length>=maxV;
           return `<label class="cand-item${ch?' checked':''}${dis?' disabled':''}">
-            <input type="checkbox" ${ch?'checked':''} ${dis?'disabled':''} onchange="toggleVote('${esc(c)}',this.checked)">${c}
+            <input type="checkbox" ${ch?'checked':''} ${dis?'disabled':''} onchange="toggleVoteIdx(${i},this.checked)">${c}
           </label>`;
         }).join('')}
       </div>
@@ -982,6 +987,10 @@ window.belepKoddal = async szId => {
 };
 
 window.toggleVote = (n,ch) => { localVotes[n]=ch; renderMobil(); };
+window.toggleVoteIdx = (i,ch) => {
+  const n = window._currentJeloltek?.[i];
+  if(n !== undefined) { localVotes[n]=ch; renderMobil(); }
+};
 
 window.submitVote = async szId => {
   const sz = DB.szavazasok?.[szId];
