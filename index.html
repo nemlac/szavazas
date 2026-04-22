@@ -292,10 +292,26 @@ function tabSzavazasok() {
       <option value="igen" ${sz.mutatEredmeny!==false?'selected':''}>Igen</option>
       <option value="nem" ${sz.mutatEredmeny===false?'selected':''}>Nem</option>
     </select>
-    <div class="row">
+    <div class="row" style="margin-bottom:1rem">
       <button class="btn btn-primary btn-sm" onclick="saveSzSettings()">Mentés</button>
       <button class="btn btn-danger btn-sm" onclick="deleteSz()">Törlés</button>
-    </div>` : '';
+    </div>
+    <hr>
+    <h2>Jelöltek</h2>
+    <div class="upload-zone" onclick="document.getElementById('a-file').click()">
+      <input type="file" id="a-file" accept=".xlsx,.xls,.csv,.txt" onchange="handleAdminFile(this)" style="display:none">
+      <div style="font-size:22px;margin-bottom:4px">📂</div>
+      <div style="font-weight:500">Fájl betöltése</div>
+      <div style="font-size:13px;color:#9ca3af">Excel, CSV vagy TXT (soronként egy név)</div>
+    </div>
+    <div class="divider">vagy</div>
+    <textarea id="a-jeloltek" style="height:150px" placeholder="Soronként egy név...">${(sz.jeloltek||[]).join('\n')}</textarea>
+    <div class="row">
+      <button class="btn btn-primary btn-sm" onclick="saveAdminJeloltek()">Mentés</button>
+      <button class="btn btn-outline btn-sm" onclick="clearAdminJeloltek()">Törlés</button>
+    </div>
+    <div id="a-jeloltek-preview" style="font-size:13px;color:#6b7280;margin-top:8px">${sz.jeloltek?.length?sz.jeloltek.length+' jelölt':''}</div>
+  ` : '';
 
   return `
     <h2>Szavazások</h2>
@@ -315,6 +331,44 @@ window.ujSzavazas = async () => {
   selectedSzavazasId = id;
   renderAdmin();
 };
+window.handleAdminFile = inp => {
+  const file = inp.files[0]; if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  if(ext==='xlsx'||ext==='xls') {
+    reader.onload = async e => {
+      const X = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+      const wb = X.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = X.utils.sheet_to_json(ws,{header:1});
+      const names = data.flat().map(v=>String(v).trim()).filter(v=>v&&v.length>1).slice(0,200);
+      document.getElementById('a-jeloltek').value = names.join('\n');
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.onload = e => {
+      const names = e.target.result.split(/\r?\n|,|;/).map(s=>s.trim()).filter(Boolean).slice(0,200);
+      document.getElementById('a-jeloltek').value = names.join('\n');
+    };
+    reader.readAsText(file,'UTF-8');
+  }
+};
+
+window.saveAdminJeloltek = async () => {
+  if(!selectedSzavazasId) return;
+  const raw = document.getElementById('a-jeloltek').value;
+  const jeloltek = raw.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,200);
+  await update(ref(db,`szavazasok/${selectedSzavazasId}`),{jeloltek});
+  document.getElementById('a-jeloltek-preview').textContent = jeloltek.length+' jelölt elmentve';
+};
+
+window.clearAdminJeloltek = async () => {
+  if(!confirm('Törlöd az összes jelöltet?')) return;
+  await update(ref(db,`szavazasok/${selectedSzavazasId}`),{jeloltek:[]});
+  document.getElementById('a-jeloltek').value='';
+  document.getElementById('a-jeloltek-preview').textContent='';
+};
+
 window.saveSzSettings = async () => {
   if (!selectedSzavazasId) return;
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), {
