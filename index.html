@@ -272,7 +272,7 @@ function tabSzavazasok() {
           <div style="font-size:12px;color:#9ca3af;margin-top:2px">${(s.jeloltek||[]).length} jelölt · max ${s.maxValaszt||1} választható</div>
         </div>
         <span class="badge ${badgeCls}">${badgeText}</span>
-        ${isAktiv?'<span class="badge b-green">● Aktív</span>':''}
+        ${isAktiv && allapot!=='pre' ?'<span class="badge b-green">● Aktív</span>': isAktiv && allapot==='pre' ? '<span class="badge b-gray">● Aktív (előkészítés)</span>' : ''}
       </div>
     </div>`;
   }).join('') : '<div class="info">Még nincs szavazás. Hozz létre egyet!</div>';
@@ -417,7 +417,7 @@ function tabVezerles() {
     <h2>${sz.cim}</h2>
     <div class="row" style="margin-bottom:1rem">
       <span class="badge ${badgeMap[allapot]||'b-gray'}">${labelMap[allapot]||allapot}</span>
-      ${isAktiv?'<span class="badge b-green">● Ez az aktív szavazás</span>':''}
+      ${isAktiv && allapot!=='pre' ?'<span class="badge b-green">● Ez az aktív szavazás</span>': isAktiv && allapot==='pre' ? '<span class="badge b-gray">● Aktív (de előkészítés alatt)</span>' : ''}
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1rem">
@@ -547,7 +547,6 @@ window.lezarasPot = async (forceFirst=false) => {
 window.resetSzavazas = async () => {
   if(!confirm('Inaktiválás: minden szavazat, belépés és napló törlődik, a kódok újra felhasználhatók lesznek. Biztosan folytatod?')) return;
   const sz = getSzavazas(); if(!sz) return;
-  // Kódok hasznalt státuszát visszaállítjuk
   const kodUpd = {};
   Object.keys(sz.kodok||{}).forEach(k => { kodUpd[k] = {hasznalt:false, letrehozva: sz.kodok[k].letrehozva||Date.now()}; });
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), {
@@ -563,6 +562,10 @@ window.resetSzavazas = async () => {
     potSpotsNeeded:0,
     kodok: Object.keys(kodUpd).length ? kodUpd : {}
   });
+  // Ha ez volt az aktív szavazás, töröljük az aktív státuszt
+  if (DB.aktiv === selectedSzavazasId) {
+    await set(ref(db,'aktiv'), null);
+  }
 };
 window.downloadEredmeny = () => {
   const sz = getSzavazas(); if(!sz) return;
