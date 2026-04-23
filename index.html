@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.11</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.13</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1114,11 +1114,11 @@ window.belepKoddal = async szId => {
 
   // Ha a kód már be van jelentkezve ÉS nem ez a saját sessionje → elutasítás
   if (benvan && !sajatSession) {
-    err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
+    err.style.display='block'; err.textContent='Ezzel a kóddal már bejelentkezett. Lehet hogy egy másik eszközön vagy böngészőablakban már be van jelentkezve.'; return;
   }
   // Ha hasznalt=true ÉS nincs a belepo-ban ÉS nem saját session → elutasítás
   if (marHasznalt && !benvan && !sajatSession) {
-    err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
+    err.style.display='block'; err.textContent='Ezzel a kóddal már bejelentkezett. Lehet hogy egy másik eszközön vagy böngészőablakban már be van jelentkezve.'; return;
   }
 
   // Belépés
@@ -1138,17 +1138,16 @@ window.belepKoddal = async szId => {
 
 window.kilepSzavazo = async szId => {
   if (!confirm('Kilépsz? Újra be kell majd jelentkezned.')) return;
+  const kodToDelete = voterCode;
   // sessionStorage törlése
   sessionStorage.removeItem('voterCode_' + szId);
-  // belepo-ból törlés
-  if (voterCode) {
-    const upd = {};
-    upd[`szavazasok/${szId}/belepo/${voterCode}`] = null;
-    upd[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = false;
-    await update(ref(db), upd);
-  }
   voterCode = null;
   localVotes = {};
+  // belepo-ból és hasznalt-ból törlés Firebase remove-val
+  if (kodToDelete) {
+    await remove(ref(db, `szavazasok/${szId}/belepo/${kodToDelete}`));
+    await update(ref(db, `szavazasok/${szId}/kodok/${kodToDelete}`), {hasznalt: false});
+  }
   renderMobil();
 };
 
