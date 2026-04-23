@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.8</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.9</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1123,13 +1123,7 @@ window.belepKoddal = async szId => {
   const upd = {};
   upd[`szavazasok/${szId}/kodok/${kod}/hasznalt`] = true;
   upd[`szavazasok/${szId}/belepo/${kod}`] = {ts:Date.now()};
-  console.log('Belépés write:', JSON.stringify(upd));
-  try {
-    await update(ref(db), upd);
-    console.log('Belépés write sikeres');
-  } catch(e) {
-    console.error('Belépés write HIBA:', e.message);
-  }
+  await update(ref(db), upd);
 
   renderMobil();
 };
