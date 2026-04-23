@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.20';
+const VERSION = 'v1.1.21';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.20</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.21</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -486,9 +486,9 @@ function tabVezerles() {
       ${allapot==='inaktiv'?`<button class="btn btn-primary btn-sm" onclick="aktival()">Aktiválás</button>`:''}
       ${allapot==='pre'?`<button class="btn btn-primary btn-sm" onclick="setAllapot('qr')">QR megjelenítése</button>`:''}
       ${allapot==='qr'?`<button class="btn btn-success btn-sm" onclick="setAllapot('szavazas')">Szavazás indítása</button>`:''}
-      ${allapot==='szavazas'&&!tieInfo?`<button class="btn btn-danger btn-sm" onclick="lezaras(false)">Lezárás</button>`:''}
+      ${allapot==='szavazas'&&!tieInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasElonezet()">Lezárás</button>`:''}
       ${allapot==='szavazas'&&tieInfo?tieWarn:''}
-      ${allapot==='potszavazas'&&!potInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasPot()">Pótszavazás lezárása</button>`:''}
+      ${allapot==='potszavazas'&&!potInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasPotElonezet()">Pótszavazás lezárása</button>`:''}
       ${allapot==='potszavazas'&&potInfo?`<div class="warn" style="width:100%"><h3>⚠️ Ismét holtverseny!</h3><p>${potInfo.tied.join(', ')}</p><div class="row"><button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Új pótszavazás</button><button class="btn btn-outline btn-sm" onclick="lezarasPot(true)">Lezárás így</button></div></div>`:''}
       ${allapot==='lezarva'?`<button class="btn btn-success btn-sm" onclick="downloadEredmeny()">⬇ Eredmény letöltése</button>`:''}
       ${allapot!=='inaktiv'?`<button class="btn btn-danger btn-sm" onclick="resetSzavazas()">Inaktiválás</button>`:''}
@@ -567,6 +567,28 @@ window.setAllapot = async (a) => {
   }
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), upd);
 };
+window.lezarasElonezet = () => {
+  const sz = getSzavazas(); if(!sz) return;
+  const res = sz.eredmenyek||{};
+  const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const top = sorted.map(([n,c])=>`${n}: ${c} szavazat`).join('\n');
+  const osszes = Object.values(res).reduce((a,b)=>a+b,0);
+  if (confirm(`Eredmény előnézet (top 5):\n\n${top}\n\nÖsszesen: ${osszes} szavazat\n\nBiztosan lezárod?`)) {
+    lezaras(false);
+  }
+};
+
+window.lezarasPotElonezet = () => {
+  const sz = getSzavazas(); if(!sz) return;
+  const res = sz.potEredmenyek||{};
+  const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]);
+  const top = sorted.map(([n,c])=>`${n}: ${c} szavazat`).join('\n');
+  const osszes = Object.values(res).reduce((a,b)=>a+b,0);
+  if (confirm(`Pótszavazás eredménye:\n\n${top}\n\nÖsszesen: ${osszes} szavazat\n\nBiztosan lezárod?`)) {
+    lezarasPot();
+  }
+};
+
 window.lezaras = async (forceFirst=false) => {
   const sz = getSzavazas(); if(!sz) return;
   const res = sz.eredmenyek||{};
@@ -1199,6 +1221,15 @@ window.submitVote = async szId => {
   upd[`szavazasok/${szId}/voterCount`] = (sz.voterCount||0)+1;
   upd[`szavazasok/${szId}/lastVoteTs`] = Date.now();
   upd[`szavazasok/${szId}/${naploKey2}/${voterCode}`] = {ts:Date.now(), votes:picked};
+  // Lokális cache frissítés
+  if (!DB.szavazasok[szId][resKey]) DB.szavazasok[szId][resKey] = {};
+  picked.forEach(c => {
+    const k = c.replace(/\./g,'_');
+    DB.szavazasok[szId][resKey][k] = (DB.szavazasok[szId][resKey][k]||0)+1;
+  });
+  if (!DB.szavazasok[szId][naploKey2]) DB.szavazasok[szId][naploKey2] = {};
+  DB.szavazasok[szId][naploKey2][voterCode] = {ts:Date.now(), votes:picked};
+  DB.szavazasok[szId].voterCount = (DB.szavazasok[szId].voterCount||0)+1;
   await update(ref(db), upd);
   localVotes = {};
   renderMobil();
