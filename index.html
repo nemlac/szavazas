@@ -129,9 +129,12 @@ let selectedSzavazasId = null;
 let localVotes = {};
 let voterCodeInput = '';
 
-// voterCode sessionStorage-ból töltjük - frissítés után megmarad
+// sessionStorage wrapper - ha blokkolva van, memóriában tároljuk
 const _szId = new URLSearchParams(window.location.search).get('s') || '';
-let voterCode = sessionStorage.getItem('voterCode_' + _szId) || null;
+function ssGet(key) { try { return sessionStorage.getItem(key); } catch(e) { return null; } }
+function ssSet(key, val) { try { sessionStorage.setItem(key, val); } catch(e) {} }
+function ssRemove(key) { try { sessionStorage.removeItem(key); } catch(e) {} }
+let voterCode = ssGet('voterCode_' + _szId) || null;
 
 // ── Auth — ez fut először ──
 onAuthStateChanged(auth, user => {
@@ -235,7 +238,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.17</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.18</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1004,7 +1007,7 @@ function renderMobil() {
       // Nem returnolounk - hagyjuk hogy a render is lefusson
     } else {
       // A kód nem létezik - töröljük a sessiont
-      sessionStorage.removeItem('voterCode_' + szId);
+      ssRemove('voterCode_' + szId);
       voterCode = null;
     }
   }
@@ -1123,7 +1126,7 @@ window.belepKoddal = async szId => {
 
   // Belépés
   voterCode = kod;
-  sessionStorage.setItem('voterCode_' + szId, kod);
+  ssSet('voterCode_' + szId, kod);
 
   // Firebase frissítés
   const upd = {};
@@ -1140,16 +1143,14 @@ window.kilepSzavazo = async szId => {
   if (!confirm('Kilépsz? Újra be kell majd jelentkezned.')) return;
   const kodToDelete = voterCode;
   // Lokális állapot törlése
-  sessionStorage.removeItem('voterCode_' + szId);
+  ssRemove('voterCode_' + szId);
   voterCode = null;
   localVotes = {};
   if (kodToDelete) {
     const upd = {};
     upd[`szavazasok/${szId}/belepo/${kodToDelete}`] = null;
     upd[`szavazasok/${szId}/kodok/${kodToDelete}/hasznalt`] = false;
-    console.log('Kilépés előtt belepo:', JSON.stringify(DB.szavazasok?.[szId]?.belepo));
     await update(ref(db), upd);
-    console.log('Firebase update kész');
     // Lokális DB cache frissítés
     if (DB.szavazasok?.[szId]?.belepo) {
       delete DB.szavazasok[szId].belepo[kodToDelete];
@@ -1157,8 +1158,6 @@ window.kilepSzavazo = async szId => {
     if (DB.szavazasok?.[szId]?.kodok?.[kodToDelete]) {
       DB.szavazasok[szId].kodok[kodToDelete].hasznalt = false;
     }
-    console.log('Kilépés után belepo:', JSON.stringify(DB.szavazasok?.[szId]?.belepo));
-    console.log('belep count:', Object.keys(DB.szavazasok?.[szId]?.belepo||{}).length);
   }
   renderMobil();
 };
