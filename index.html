@@ -114,6 +114,9 @@ const fbApp = initializeApp({
 const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
+// ── Verzió ──
+const VERSION = 'v1.1.19';
+
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
 const mode = P.get('mode') || 'mobil';
@@ -148,7 +151,7 @@ onAuthStateChanged(auth, user => {
 
 // ── Helpers ──
 const R = html => document.getElementById('root').innerHTML = html;
-const wrap = c => `<div class="wrap"><div class="card">${c}</div></div>`;
+const wrap = c => `<div class="wrap"><div class="card">${c}</div><div style="text-align:center;font-size:11px;color:#d1d5db;padding:4px 0 8px">${VERSION}</div></div>`;
 const esc = s => String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('hu') : '-';
 const secAgo = ts => ts ? Math.round((Date.now()-ts)/1000) : null;
@@ -209,6 +212,7 @@ function renderLogin() {
       <div>Kezelő: <b>${kezeloUrl()}</b></div>
       <div>Kivetítő: <b>${kivetUrl()}</b></div>
     </div>
+    <div style="text-align:center;font-size:11px;color:#d1d5db;margin-top:1rem">${VERSION}</div>
   `));
 }
 
@@ -238,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.18</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.19</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -766,7 +770,10 @@ function renderKezelo() {
 
   R(wrap(`
     <div class="row" style="margin-bottom:1rem">
-      <h1 style="flex:1;margin:0">Kezelő</h1>
+      <div style="flex:1">
+        <h1 style="margin:0">Kezelő</h1>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">${VERSION}</div>
+      </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
     ${szSelect}
@@ -836,11 +843,12 @@ function renderKivetito() {
   const id = DB.aktiv;
   const sz = getAktivSzavazas();
 
+  const VER_TAG = `<div style="position:fixed;bottom:8px;right:12px;font-size:11px;color:#d1d5db;z-index:99">${VERSION}</div>`;
   if (!id || !sz || sz.allapot==='inaktiv') {
     R(`<div class="proj"><div class="proj-center">
       <div style="font-size:36px;font-weight:700;color:#374151">Szavazási rendszer</div>
       <div style="font-size:20px;color:#9ca3af">Nincs aktív szavazás</div>
-    </div></div>`);
+    </div>${VER_TAG}</div>`);
     return;
   }
 
@@ -856,7 +864,7 @@ function renderKivetito() {
     R(`<div class="proj"><div class="proj-center">
       <div style="font-size:42px;font-weight:700;color:#1a1a1a;text-align:center">${sz.cim||''}</div>
       ${sorok.map((s,i)=>`<div style="font-size:${i===0?'28':'22'}px;color:#374151;text-align:center">${s}</div>`).join('')}
-    </div></div>`);
+    </div>${VER_TAG}</div>`);
     return;
   }
 
@@ -982,7 +990,7 @@ function renderKivetito() {
 // ══════════════════════════════════════
 function renderMobil() {
   const szId = P.get('s');
-  if (!szId) { R(wrap('<div class="info">Hiányzó szavazás azonosító. Olvasd be a QR kódot!</div>')); return; }
+  if (!szId) { R(wrap(`<div class="info">Hiányzó szavazás azonosító. Olvasd be a QR kódot!</div><div style="text-align:center;font-size:11px;color:#d1d5db;margin-top:1rem">${VERSION}</div>`)); return; }
   const sz = DB.szavazasok?.[szId];
   if (!sz) {
     if (Object.keys(DB.szavazasok||{}).length > 0) {
@@ -1099,7 +1107,8 @@ function renderMobil() {
   }
 
   // LEZÁRVA
-  R(wrap(`<div class="success-screen"><div class="success-icon">🏁</div><h1>A szavazás lezárult</h1><p style="color:#6b7280;margin-top:8px">Köszönjük a részvételt!</p></div>`));
+  R(wrap(`<div class="success-screen"><div class="success-icon">🏁</div><h1>A szavazás lezárult</h1><p style="color:#6b7280;margin-top:8px">Köszönjük a részvételt!</p></div>
+    <div style="text-align:center;font-size:11px;color:#d1d5db;margin-top:1rem">${VERSION}</div>`));
 }
 
 window.belepKoddal = async szId => {
