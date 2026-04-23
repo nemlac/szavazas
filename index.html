@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.6</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.7</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -993,14 +993,15 @@ function renderMobil() {
   const allapot = sz.allapot||'pre';
   const title = sz.cim||'Szavazás';
 
-  // Ha van voterCode sessionben → szinkronizáljuk Firebase-zel (mindig)
+  // Ha van voterCode sessionben → szinkronizáljuk Firebase-zel (mindig true-ra állítjuk)
   if (voterCode && (allapot==='szavazas'||allapot==='potszavazas'||allapot==='qr')) {
     if (sz.kodok?.[voterCode]) {
       const upd2 = {};
+      // Mindig beírjuk - ha már ott van a Firebase felülírja ugyanazzal (nem okoz problémát)
+      upd2[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = true;
       if (!sz.belepo?.[voterCode]) upd2[`szavazasok/${szId}/belepo/${voterCode}`] = {ts:Date.now()};
-      if (!sz.kodok[voterCode].hasznalt) upd2[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = true;
-      // Ha volt mit frissíteni → Firebase listener majd újrarenderel automatikusan
-      if (Object.keys(upd2).length) { update(ref(db), upd2); return; }
+      update(ref(db), upd2);
+      // Nem returnolounk - hagyjuk hogy a render is lefusson
     } else {
       // A kód nem létezik - töröljük a sessiont
       sessionStorage.removeItem('voterCode_' + szId);
