@@ -263,8 +263,8 @@ function tabSzavazasok() {
     const s = list[id];
     const allapot = s.allapot || 'pre';
     const isAktiv = DB.aktiv === id;
-    const badgeCls = {pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'}[allapot]||'b-gray';
-    const badgeText = {pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás',lezarva:'Lezárva',potszavazas:'Pótszavazás'}[allapot]||allapot;
+    const badgeCls = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'}[allapot]||'b-gray';
+    const badgeText = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás',lezarva:'Lezárva',potszavazas:'Pótszavazás'}[allapot]||allapot;
     return `<div class="szavazas-card${selectedSzavazasId===id?' active-card':''}" onclick="selectSz('${id}')">
       <div class="row">
         <div style="flex:1">
@@ -272,7 +272,7 @@ function tabSzavazasok() {
           <div style="font-size:12px;color:#9ca3af;margin-top:2px">${(s.jeloltek||[]).length} jelölt · max ${s.maxValaszt||1} választható</div>
         </div>
         <span class="badge ${badgeCls}">${badgeText}</span>
-        ${isAktiv && allapot!=='pre' ?'<span class="badge b-green">● Aktív</span>': isAktiv && allapot==='pre' ? '<span class="badge b-gray">● Aktív (előkészítés)</span>' : ''}
+        ${isAktiv && allapot!=='inaktiv' ?'<span class="badge b-green">● Aktív</span>':''}
       </div>
     </div>`;
   }).join('') : '<div class="info">Még nincs szavazás. Hozz létre egyet!</div>';
@@ -324,7 +324,7 @@ window.selectSz = id => { selectedSzavazasId = id; renderAdmin(); };
 window.ujSzavazas = async () => {
   const id = 'sz_' + Date.now();
   await set(ref(db,`szavazasok/${id}`), {
-    cim: 'Új szavazás', allapot: 'pre', letrehozva: Date.now(),
+    cim: 'Új szavazás', allapot: 'inaktiv', letrehozva: Date.now(),
     maxValaszt: 1, jeloltek: [], mutatEredmeny: true,
     kivetitoszoveg: 'Rövidesen kezdődik a szavazás!\nKérjük készítsék elő mobiljaikat.'
   });
@@ -391,8 +391,8 @@ function tabVezerles() {
   if (!sz) return '<div class="info">Válassz szavazást a Szavazások fülön!</div>';
 
   const allapot = sz.allapot || 'pre';
-  const badgeMap = {pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'};
-  const labelMap = {pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás folyamatban',lezarva:'Lezárva',potszavazas:'Pótszavazás'};
+  const badgeMap = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'};
+  const labelMap = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás folyamatban',lezarva:'Lezárva',potszavazas:'Pótszavazás'};
   const isAktiv = DB.aktiv === selectedSzavazasId;
 
   const belep = Object.keys(sz.belepo||{}).length;
@@ -417,7 +417,7 @@ function tabVezerles() {
     <h2>${sz.cim}</h2>
     <div class="row" style="margin-bottom:1rem">
       <span class="badge ${badgeMap[allapot]||'b-gray'}">${labelMap[allapot]||allapot}</span>
-      ${isAktiv && allapot!=='pre' ?'<span class="badge b-green">● Ez az aktív szavazás</span>': isAktiv && allapot==='pre' ? '<span class="badge b-gray">● Aktív (de előkészítés alatt)</span>' : ''}
+      ${isAktiv && allapot!=='inaktiv' ?'<span class="badge b-green">● Ez az aktív szavazás</span>':''}
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1rem">
@@ -435,23 +435,20 @@ function tabVezerles() {
       </div>
     </div>
 
-    ${tieWarn}
-
     <h3>Fázis vezérlés</h3>
     <div class="row" style="margin-bottom:1rem;flex-wrap:wrap">
-      ${!isAktiv?`<button class="btn btn-outline btn-sm" onclick="setAktiv()">Aktívvá tesz</button>`:''}
+      ${allapot==='inaktiv'?`<button class="btn btn-primary btn-sm" onclick="aktival()">Aktiválás</button>`:''}
       ${allapot==='pre'?`<button class="btn btn-primary btn-sm" onclick="setAllapot('qr')">QR megjelenítése</button>`:''}
       ${allapot==='qr'?`<button class="btn btn-success btn-sm" onclick="setAllapot('szavazas')">Szavazás indítása</button>`:''}
-      ${allapot==='qr'?`<button class="btn btn-outline btn-sm" onclick="setAllapot('pre')">Vissza PRE-re</button>`:''}
       ${allapot==='szavazas'&&!tieInfo?`<button class="btn btn-danger btn-sm" onclick="lezaras(false)">Lezárás</button>`:''}
-      ${allapot==='szavazas'?`<button class="btn btn-outline btn-sm" onclick="setAllapot('qr')">Vissza QR-re</button>`:''}
+      ${allapot==='szavazas'&&tieInfo?tieWarn:''}
       ${allapot==='potszavazas'&&!potInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasPot()">Pótszavazás lezárása</button>`:''}
       ${allapot==='potszavazas'&&potInfo?`<div class="warn" style="width:100%"><h3>⚠️ Ismét holtverseny!</h3><p>${potInfo.tied.join(', ')}</p><div class="row"><button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Új pótszavazás</button><button class="btn btn-outline btn-sm" onclick="lezarasPot(true)">Lezárás így</button></div></div>`:''}
-      <button class="btn btn-danger btn-sm" onclick="resetSzavazas()">Inaktiválás</button>
+      ${allapot==='lezarva'?`<button class="btn btn-success btn-sm" onclick="downloadEredmeny()">⬇ Eredmény letöltése</button>`:''}
+      ${allapot!=='inaktiv'?`<button class="btn btn-danger btn-sm" onclick="resetSzavazas()">Inaktiválás</button>`:''}
     </div>
 
-    ${allapot==='lezarva'||allapot==='potszavazas' ? renderEredmenyek(sz) : ''}
-    ${allapot==='lezarva' ? `<button class="btn btn-success" onclick="downloadEredmeny()">⬇ Eredmény letöltése (következő szavazás inputja)</button>` : ''}`;
+    ${allapot==='lezarva'||allapot==='potszavazas' ? renderEredmenyek(sz) : ''}`;
 }
 
 function renderEredmenyek(sz) {
@@ -499,6 +496,11 @@ function detectTie(sz) {
 
 window.setAktiv = async () => {
   await set(ref(db,'aktiv'), selectedSzavazasId);
+};
+window.aktival = async () => {
+  if (!selectedSzavazasId) return;
+  await set(ref(db,'aktiv'), selectedSzavazasId);
+  await update(ref(db,`szavazasok/${selectedSzavazasId}`), { allapot:'pre' });
 };
 window.setAllapot = async (a) => {
   if (!selectedSzavazasId) return;
@@ -562,7 +564,7 @@ window.resetSzavazas = async () => {
   const kodUpd = {};
   Object.keys(sz.kodok||{}).forEach(k => { kodUpd[k] = {hasznalt:false, letrehozva: sz.kodok[k].letrehozva||Date.now()}; });
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), {
-    allapot:'pre',
+    allapot:'inaktiv',
     eredmenyek:{},
     potEredmenyek:{},
     nyertesek:[],
@@ -574,7 +576,7 @@ window.resetSzavazas = async () => {
     potSpotsNeeded:0,
     kodok: Object.keys(kodUpd).length ? kodUpd : {}
   });
-  // Ha ez volt az aktív szavazás, töröljük az aktív státuszt
+  // Töröljük az aktív státuszt
   if (DB.aktiv === selectedSzavazasId) {
     await set(ref(db,'aktiv'), null);
   }
@@ -792,7 +794,7 @@ function renderKivetito() {
   const id = DB.aktiv;
   const sz = getAktivSzavazas();
 
-  if (!id || !sz) {
+  if (!id || !sz || sz.allapot==='inaktiv') {
     R(`<div class="proj"><div class="proj-center">
       <div style="font-size:36px;font-weight:700;color:#374151">Szavazási rendszer</div>
       <div style="font-size:20px;color:#9ca3af">Nincs aktív szavazás</div>
@@ -800,7 +802,7 @@ function renderKivetito() {
     return;
   }
 
-  const allapot = sz.allapot||'pre';
+  const allapot = sz.allapot||'inaktiv';
   const belep = Object.keys(sz.belepo||{}).length;
   const szavazott = sz.voterCount||0;
   const lastVote = sz.lastVoteTs;
@@ -934,9 +936,13 @@ function renderMobil() {
   const allapot = sz.allapot||'pre';
   const title = sz.cim||'Szavazás';
 
-  // PRE fázis
+  // INAKTÍV vagy PRE fázis
+  if (allapot==='inaktiv') {
+    R(wrap(`<h1>${title}</h1><div class="info" style="text-align:center;padding:2rem">A szavazás még nem aktív.<br>Várd meg a szervező jelzését.</div>`));
+    return;
+  }
   if (allapot==='pre') {
-    R(wrap(`<h1>${title}</h1><div class="info" style="text-align:center;padding:2rem">A szavazás előkészítés alatt.<br>Várd meg a szervező jelzését.</div>`));
+    R(wrap(`<h1>${title}</h1><div class="info" style="text-align:center;padding:2rem">A szavazás előkészítés alatt.<br>Várd meg a QR kód megjelenését.</div>`));
     return;
   }
 
