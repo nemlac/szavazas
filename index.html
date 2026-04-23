@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.1</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.2</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1042,13 +1042,13 @@ function renderMobil() {
       return;
     }
     if (!voterCode) {
-      // Szavazás közben elveszett a session - adjunk lehetőséget újra beírni a kódot
+      // Nincs session - normális belépési képernyő (késve érkezők + session elvesztés)
       R(wrap(`
         <h1>${title}</h1>
-        <div class="info" style="margin-bottom:1rem">A munkamenet lejárt. Add meg újra az egyedi kódodat a folytatáshoz.</div>
+        <div class="info" style="margin-bottom:1rem">Add meg az egyedi kódodat a szavazáshoz.</div>
         <input type="text" id="m-kod" placeholder="pl. ABC123" style="text-transform:uppercase;letter-spacing:.1em;font-size:20px;text-align:center" maxlength="6" oninput="this.value=this.value.toUpperCase()">
         <div id="m-err" class="error-box" style="display:none"></div>
-        <button class="btn btn-primary" onclick="ujraBelep('${szId}')">Folytatás</button>
+        <button class="btn btn-primary" onclick="belepKoddal('${szId}')">Belépés</button>
       `));
       return;
     }
@@ -1088,36 +1088,21 @@ window.belepKoddal = async szId => {
   if (!kod||kod.length<4) { err.style.display='block'; err.textContent='Add meg az egyedi kódodat!'; return; }
   const sz = DB.szavazasok?.[szId];
   if (!sz?.kodok?.[kod]) { err.style.display='block'; err.textContent='Érvénytelen kód!'; return; }
-  if (sz.kodok[kod].hasznalt) { err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return; }
-  // Belépés
+  // Ha a kód már használt DE ez a saját sessionje (frissítés után)
+  if (sz.kodok[kod].hasznalt && !sz.belepo?.[kod]) {
+    err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
+  }
+  // Belépés - ha már hasznalt (pl. frissítés után visszatér) csak sessiont állítjuk vissza
   voterCode = kod;
   sessionStorage.setItem('voterCode_' + szId, kod);
-  await update(ref(db,`szavazasok/${szId}/belepo/${kod}`),{ts:Date.now()});
-  await update(ref(db,`szavazasok/${szId}/kodok/${kod}`),{hasznalt:true});
+  if (!sz.kodok[kod].hasznalt) {
+    await update(ref(db,`szavazasok/${szId}/belepo/${kod}`),{ts:Date.now()});
+    await update(ref(db,`szavazasok/${szId}/kodok/${kod}`),{hasznalt:true});
+  }
   renderMobil();
 };
 
-window.ujraBelep = async szId => {
-  const kod = document.getElementById('m-kod').value.trim().toUpperCase();
-  const err = document.getElementById('m-err');
-  err.style.display = 'none';
-  if (!kod || kod.length < 4) { err.style.display='block'; err.textContent='Add meg a kódodat!'; return; }
-  const sz = DB.szavazasok?.[szId];
-  // Ellenőrzés: a kód létezik ÉS már be van jelentkezve (hasznalt)
-  if (!sz?.kodok?.[kod]) { err.style.display='block'; err.textContent='Érvénytelen kód!'; return; }
-  if (!sz.kodok[kod].hasznalt) { err.style.display='block'; err.textContent='Ez a kód még nem lett bejelentkezve!'; return; }
-  // Ha már szavazott ezzel a kóddal
-  if (sz.naplo?.[kod]) {
-    voterCode = kod;
-    sessionStorage.setItem('voterCode_' + szId, kod);
-    renderMobil();
-    return;
-  }
-  // Visszaállítjuk a sessiont
-  voterCode = kod;
-  sessionStorage.setItem('voterCode_' + szId, kod);
-  renderMobil();
-};
+// ujraBelep már nem kell - belepKoddal kezeli a késve érkezőket is
 
 window.toggleVote = (n,ch) => { localVotes[n]=ch; renderMobil(); };
 window.toggleVoteIdx = (i,ch) => {
