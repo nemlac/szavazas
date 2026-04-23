@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.7</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.8</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -648,7 +648,7 @@ function tabKodok() {
       <button class="btn btn-danger btn-sm" onclick="deleteKodok()">Törlés</button>
     </div>
     <div class="kod-grid">
-      ${ids.map(k=>`<div class="kod-chip${kodok[k].hasznalt?' used':''}">${k}</div>`).join('')}
+      ${ids.map(k=>`<div class="kod-chip${(kodok[k].hasznalt||sz.belepo?.[k])?' used':''}">${k}</div>`).join('')}
     </div>`;
 }
 
@@ -1121,13 +1121,15 @@ window.belepKoddal = async szId => {
 
   // Firebase frissítés
   const upd = {};
-  if (!marHasznalt) {
-    upd[`szavazasok/${szId}/kodok/${kod}/hasznalt`] = true;
+  upd[`szavazasok/${szId}/kodok/${kod}/hasznalt`] = true;
+  upd[`szavazasok/${szId}/belepo/${kod}`] = {ts:Date.now()};
+  console.log('Belépés write:', JSON.stringify(upd));
+  try {
+    await update(ref(db), upd);
+    console.log('Belépés write sikeres');
+  } catch(e) {
+    console.error('Belépés write HIBA:', e.message);
   }
-  if (!benvan) {
-    upd[`szavazasok/${szId}/belepo/${kod}`] = {ts:Date.now()};
-  }
-  if (Object.keys(upd).length) await update(ref(db), upd);
 
   renderMobil();
 };
