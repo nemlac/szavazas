@@ -149,7 +149,7 @@ const wrap = c => `<div class="wrap"><div class="card">${c}</div></div>`;
 const esc = s => String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('hu') : '-';
 const secAgo = ts => ts ? Math.round((Date.now()-ts)/1000) : null;
-const timeStr = ts => { const s=secAgo(ts); if(!s) return ''; return s<60?`${s} mp`:`${Math.round(s/60)} perce`; };
+const timeStr = ts => { const s=secAgo(ts); if(s===null) return ''; if(s<=0) return 'most'; return s<60?`${s} mp`:`${Math.round(s/60)} perce`; };
 
 
 // ── Firebase listener ──
@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.13</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.15</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1139,16 +1139,16 @@ window.belepKoddal = async szId => {
 window.kilepSzavazo = async szId => {
   if (!confirm('Kilépsz? Újra be kell majd jelentkezned.')) return;
   const kodToDelete = voterCode;
-  // sessionStorage törlése
+  // Lokális állapot törlése
   sessionStorage.removeItem('voterCode_' + szId);
   voterCode = null;
   localVotes = {};
-  // belepo-ból és hasznalt-ból törlés Firebase remove-val
+  // Firebase törlés - a listener automatikusan újrarenderel friss adattal
   if (kodToDelete) {
     await remove(ref(db, `szavazasok/${szId}/belepo/${kodToDelete}`));
     await update(ref(db, `szavazasok/${szId}/kodok/${kodToDelete}`), {hasznalt: false});
   }
-  renderMobil();
+  // NE hívjuk renderMobil()-t - a Firebase onValue listener fogja megtenni friss adattal
 };
 
 window.toggleVote = (n,ch) => { localVotes[n]=ch; renderMobil(); };
