@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.19';
+const VERSION = 'v1.1.20';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.19</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.20</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -587,6 +587,7 @@ window.startPotszavazas = async () => {
     potJeloltek: tieInfo.tied,
     potSpotsNeeded: tieInfo.spotsNeeded,
     potEredmenyek: potRes,
+    potNaplo: {},
     belepo: sz.belepo||{},
     voterCount: 0,
     lastVoteTs: null
@@ -1064,9 +1065,11 @@ function renderMobil() {
   // SZAVAZÁS fázis
   if (allapot==='szavazas'||allapot==='potszavazas') {
     // Ellenőrizzük szavazott-e már
-    const alreadyVoted = sz.naplo?.[voterCode];
+    // Pótszavazásnál külön napló - az alap napló NEM blokkolja
+    const naploKey = allapot==='potszavazas' ? 'potNaplo' : 'naplo';
+    const alreadyVoted = sz[naploKey]?.[voterCode];
     if (alreadyVoted) {
-      R(wrap(`<div class="success-screen"><div class="success-icon">✅</div><h1>Már szavaztál!</h1><p style="color:#6b7280;margin-top:8px">Szavazatod rögzítve.</p><div style="margin-top:8px;font-family:monospace;font-weight:700;font-size:16px">${voterCode}</div></div>`));
+      R(wrap(`<div class="success-screen"><div class="success-icon">✅</div><h1>Már szavaztál!</h1><p style="color:#6b7280;margin-top:8px">${allapot==='potszavazas'?'Pótszavazatod':'Szavazatod'} rögzítve.</p><div style="margin-top:8px;font-family:monospace;font-weight:700;font-size:16px">${voterCode}</div></div>`));
       return;
     }
     if (!voterCode) {
@@ -1188,13 +1191,14 @@ window.submitVote = async szId => {
 
   const upd = {};
   const resKey = allapot==='potszavazas'?'potEredmenyek':'eredmenyek';
+  const naploKey2 = allapot==='potszavazas'?'potNaplo':'naplo';
   picked.forEach(c => {
     const k = c.replace(/\./g,'_');
     upd[`szavazasok/${szId}/${resKey}/${k}`] = (sz[resKey]?.[k]||0)+1;
   });
   upd[`szavazasok/${szId}/voterCount`] = (sz.voterCount||0)+1;
   upd[`szavazasok/${szId}/lastVoteTs`] = Date.now();
-  upd[`szavazasok/${szId}/naplo/${voterCode}`] = {ts:Date.now(), votes:picked};
+  upd[`szavazasok/${szId}/${naploKey2}/${voterCode}`] = {ts:Date.now(), votes:picked};
   await update(ref(db), upd);
   localVotes = {};
   renderMobil();
