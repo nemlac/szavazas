@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.15</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.16</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1143,12 +1143,21 @@ window.kilepSzavazo = async szId => {
   sessionStorage.removeItem('voterCode_' + szId);
   voterCode = null;
   localVotes = {};
-  // Firebase törlés - a listener automatikusan újrarenderel friss adattal
   if (kodToDelete) {
-    await remove(ref(db, `szavazasok/${szId}/belepo/${kodToDelete}`));
-    await update(ref(db, `szavazasok/${szId}/kodok/${kodToDelete}`), {hasznalt: false});
+    // Egy update hívással töröljük (null = törlés Firebase-ben)
+    const upd = {};
+    upd[`szavazasok/${szId}/belepo/${kodToDelete}`] = null;
+    upd[`szavazasok/${szId}/kodok/${kodToDelete}/hasznalt`] = false;
+    await update(ref(db), upd);
+    // Lokális DB cache-t is frissítjük azonnal
+    if (DB.szavazasok?.[szId]?.belepo) {
+      delete DB.szavazasok[szId].belepo[kodToDelete];
+    }
+    if (DB.szavazasok?.[szId]?.kodok?.[kodToDelete]) {
+      DB.szavazasok[szId].kodok[kodToDelete].hasznalt = false;
+    }
   }
-  // NE hívjuk renderMobil()-t - a Firebase onValue listener fogja megtenni friss adattal
+  renderMobil();
 };
 
 window.toggleVote = (n,ch) => { localVotes[n]=ch; renderMobil(); };
