@@ -96,6 +96,7 @@ tr:hover td{background:#f9fafb}
 <div id="root"><div class="wrap"><div class="card"><div class="loading"><div class="spinner"></div><span>Betöltés...</span></div></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, onValue, update, push, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -229,7 +230,10 @@ function renderAdmin() {
 
   R(wrap(`
     <div class="row" style="margin-bottom:1rem">
-      <h1 style="flex:1;margin:0">Admin</h1>
+      <div style="flex:1">
+        <h1 style="margin:0">Admin</h1>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.0</div>
+      </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
     <div class="tab-bar">
@@ -242,6 +246,7 @@ function renderAdmin() {
     <div id="admin-tab">${renderAdminTab(tab)}</div>
   `));
   if (tab==='kivetito') setTimeout(()=>makeQR('a-qr-mobil', mobilUrl(selectedSzavazasId||DB.aktiv||''), 140), 80);
+  if (tab==='szavazasok') setTimeout(()=>initSortable(), 80);
 }
 
 window.setAdminTab = t => { window._adminTab=t; renderAdmin(); };
@@ -257,25 +262,36 @@ function renderAdminTab(tab) {
 
 function tabSzavazasok() {
   const list = DB.szavazasok || {};
-  const ids = Object.keys(list).sort((a,b) => (list[b].letrehozva||0)-(list[a].letrehozva||0));
+  const ids = Object.keys(list).sort((a,b) => {
+    // Ha van sorrend mező, az alapján; különben létrehozás ideje
+    const sa = list[a].sorrend !== undefined ? list[a].sorrend : (list[a].letrehozva||0);
+    const sb = list[b].sorrend !== undefined ? list[b].sorrend : (list[b].letrehozva||0);
+    return list[a].sorrend !== undefined ? sa-sb : sb-sa;
+  });
 
-  let szList = ids.length ? ids.map(id => {
+  let szList = ids.length ? `<div id="sz-list">${ids.map((id, idx) => {
     const s = list[id];
-    const allapot = s.allapot || 'pre';
+    const allapot = s.allapot || 'inaktiv';
     const isAktiv = DB.aktiv === id;
     const badgeCls = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'}[allapot]||'b-gray';
     const badgeText = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás',lezarva:'Lezárva',potszavazas:'Pótszavazás'}[allapot]||allapot;
-    return `<div class="szavazas-card${selectedSzavazasId===id?' active-card':''}" onclick="selectSz('${id}')">
+    return `<div class="szavazas-card${selectedSzavazasId===id?' active-card':''}" data-id="${id}" onclick="selectSz('${id}')">
       <div class="row">
-        <div style="flex:1">
-          <div style="font-weight:600">${s.cim||'(névtelen)'}</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:2px">${(s.jeloltek||[]).length} jelölt · max ${s.maxValaszt||1} választható</div>
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <span class="drag-handle" title="Húzással átrendezhető" style="cursor:grab;color:#d1d5db;font-size:18px;flex-shrink:0">⠿</span>
+          <span style="font-size:12px;font-weight:600;color:#9ca3af;flex-shrink:0;min-width:20px">${idx+1}.</span>
+          <div style="min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.cim||'(névtelen)'}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:2px">${(s.jeloltek||[]).length} jelölt · max ${s.maxValaszt||1} választható</div>
+          </div>
         </div>
-        <span class="badge ${badgeCls}">${badgeText}</span>
-        ${isAktiv && allapot!=='inaktiv' ?'<span class="badge b-green">● Aktív</span>':''}
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <span class="badge ${badgeCls}">${badgeText}</span>
+          ${isAktiv && allapot!=='inaktiv' ?'<span class="badge b-green">● Aktív</span>':''}
+        </div>
       </div>
     </div>`;
-  }).join('') : '<div class="info">Még nincs szavazás. Hozz létre egyet!</div>';
+  }).join('')}</div>` : '<div class="info">Még nincs szavazás. Hozz létre egyet!</div>';
 
   const sz = getSzavazas();
   const szForm = sz ? `
@@ -321,6 +337,26 @@ function tabSzavazasok() {
 }
 
 window.selectSz = id => { selectedSzavazasId = id; renderAdmin(); };
+
+function initSortable() {
+  const el = document.getElementById('sz-list');
+  if (!el || typeof Sortable === 'undefined') return;
+  Sortable.create(el, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'active-card',
+    onEnd: async evt => {
+      // Új sorrend mentése Firebase-be
+      const cards = el.querySelectorAll('.szavazas-card');
+      const upd = {};
+      cards.forEach((card, idx) => {
+        const id = card.getAttribute('data-id');
+        if (id) upd[`szavazasok/${id}/sorrend`] = idx;
+      });
+      await update(ref(db), upd);
+    }
+  });
+}
 window.ujSzavazas = async () => {
   const id = 'sz_' + Date.now();
   await set(ref(db,`szavazasok/${id}`), {
