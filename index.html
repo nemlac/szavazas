@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.22';
+const VERSION = 'v1.1.23';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.22</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.23</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1232,18 +1232,16 @@ window.submitVote = async szId => {
   upd[`szavazasok/${szId}/voterCount`] = (sz.voterCount||0)+1;
   upd[`szavazasok/${szId}/lastVoteTs`] = Date.now();
   upd[`szavazasok/${szId}/${naploKey2}/${voterCode}`] = {ts:Date.now(), votes:picked};
+  console.log('submitVote:', naploKey2, voterCode, JSON.stringify(upd).substring(0,200));
   // Lokális cache frissítés
-  if (!DB.szavazasok[szId][resKey]) DB.szavazasok[szId][resKey] = {};
-  picked.forEach(c => {
-    const k = c.replace(/\./g,'_');
-    DB.szavazasok[szId][resKey][k] = (DB.szavazasok[szId][resKey][k]||0)+1;
-  });
   if (!DB.szavazasok[szId][naploKey2]) DB.szavazasok[szId][naploKey2] = {};
   DB.szavazasok[szId][naploKey2][voterCode] = {ts:Date.now(), votes:picked};
-  DB.szavazasok[szId].voterCount = (DB.szavazasok[szId].voterCount||0)+1;
+  console.log('Cache után naplo:', JSON.stringify(DB.szavazasok[szId][naploKey2]));
   await update(ref(db), upd);
+  console.log('Firebase write kész');
   localVotes = {};
   renderMobil();
+  console.log('renderMobil lefutott, alreadyVoted:', DB.szavazasok[szId][naploKey2]?.[voterCode] ? 'IGEN' : 'NEM');
 };
 
 // ── QR kód generálás ──
