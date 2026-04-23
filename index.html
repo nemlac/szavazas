@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.21';
+const VERSION = 'v1.1.22';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.21</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.22</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -986,24 +986,34 @@ function renderKivetito() {
     const nyertesek = sz.nyertesek||[];
     const res = sz.eredmenyek||{};
     const potRes = sz.potEredmenyek||{};
+    const potJeloltek = sz.potJeloltek||[];
     const allRes = {...res};
     Object.entries(potRes).forEach(([k,v])=>{ allRes[k]=(allRes[k]||0)+v; });
     const sorted = Object.entries(allRes).sort((a,b)=>b[1]-a[1]).slice(0,15);
     const max = Math.max(...sorted.map(e=>e[1]),1);
     const ws = new Set(nyertesek);
+    const potSet = new Set(potJeloltek);
 
-    R(`<div class="proj"><div style="padding-top:2rem">
+    // Holtverseny detektálás a lezáráskor
+    const tieAtClose = detectTie(sz);
+    const potszavazasKell = tieAtClose && !potRes.length;
+
+    R(`<div class="proj"><div style="padding-top:2rem;max-width:900px;margin:0 auto">
       <div style="font-size:28px;font-weight:700;margin-bottom:1.5rem">${sz.cim} — Végeredmény</div>
-      ${nyertesek.length?`<div style="font-size:22px;font-weight:600;color:#057a55;margin-bottom:1.5rem">✓ Nyertes${nyertesek.length>1?'ek':''}: ${nyertesek.join(', ')}</div>`:''}
-      ${sorted.map(([n,c])=>{const w=ws.has(n);return `<div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:18px;font-weight:${w?'700':'400'};color:${w?'#057a55':'inherit'}">${w?'✓ ':''}${n}</span>
-          <span style="font-size:18px;font-weight:600;color:${w?'#057a55':'#6b7280'}">${c}</span>
-        </div>
-        <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
-          <div style="height:100%;background:${w?'#057a55':'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
-        </div>
-      </div>`;}).join('')}
+      ${nyertesek.length?`<div style="font-size:22px;font-weight:600;color:#057a55;margin-bottom:1rem">✓ Bekerült${nyertesek.length>1?'ek':''}: ${nyertesek.join(', ')}</div>`:''}
+      ${potJeloltek.length?`<div style="font-size:20px;font-weight:600;color:#d97706;margin-bottom:1.5rem">⚡ Pótszavazás: ${potJeloltek.join(', ')}</div>`:''}
+      ${sorted.map(([n,c])=>{
+        const w=ws.has(n), p=potSet.has(n)&&!w;
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:18px;font-weight:${w||p?'700':'400'};color:${w?'#057a55':p?'#d97706':'inherit'}">${w?'✓ ':p?'⚡ ':''}${n}</span>
+            <span style="font-size:18px;font-weight:600;color:${w?'#057a55':p?'#d97706':'#6b7280'}">${c}</span>
+          </div>
+          <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
+            <div style="height:100%;background:${w?'#057a55':p?'#d97706':'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+          </div>
+        </div>`;
+      }).join('')}
     </div></div>`);
   }
 }
@@ -1032,9 +1042,10 @@ function renderMobil() {
     if (sz.kodok?.[voterCode]) {
       const upd2 = {};
       // Mindig beírjuk - ha már ott van a Firebase felülírja ugyanazzal (nem okoz problémát)
-      upd2[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = true;
+      // Csak akkor írunk ha szükséges
       if (!sz.belepo?.[voterCode]) upd2[`szavazasok/${szId}/belepo/${voterCode}`] = {ts:Date.now()};
-      update(ref(db), upd2);
+      if (!sz.kodok[voterCode].hasznalt) upd2[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = true;
+      if (Object.keys(upd2).length) update(ref(db), upd2);
       // Nem returnolounk - hagyjuk hogy a render is lefusson
     } else {
       // A kód nem létezik - töröljük a sessiont
