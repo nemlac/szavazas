@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.9</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.2.0</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1108,10 +1108,14 @@ window.belepKoddal = async szId => {
   const allapot = sz.allapot||'inaktiv';
   const marHasznalt = sz.kodok[kod].hasznalt;
   const benvan = !!sz.belepo?.[kod];
-  const marSzavazott = !!sz.naplo?.[kod];
+  const sajatSession = sessionStorage.getItem('voterCode_' + szId) === kod;
 
-  // Ha a kód már használva van ÉS nem ez a saját sessionje → elutasítás
-  if (marHasznalt && !benvan) {
+  // Ha a kód már be van jelentkezve ÉS nem ez a saját sessionje → elutasítás
+  if (benvan && !sajatSession) {
+    err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
+  }
+  // Ha hasznalt=true ÉS nincs a belepo-ban ÉS nem saját session → elutasítás
+  if (marHasznalt && !benvan && !sajatSession) {
     err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
   }
 
