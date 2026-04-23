@@ -847,46 +847,64 @@ function renderKivetito() {
     const jeloltek = allapot==='potszavazas' ? (sz.potJeloltek||[]) : (sz.jeloltek||[]);
     const sorted = jeloltek.map(n=>[n,res[n]||0]).sort((a,b)=>b[1]-a[1]);
     const max = Math.max(...sorted.map(e=>e[1]),1);
+    const pct = belep>0 ? Math.round(szavazott/belep*100) : 0;
+    const kész = szavazott>=belep && belep>0;
+    const szinAlap = kész ? '#057a55' : '#1a56db';
+    const szinVilagos = kész ? '#d1fae5' : '#dbeafe';
 
-    const statsHtml = `<div style="display:flex;gap:3rem;margin-bottom:2rem">
-      <div style="text-align:center">
-        <div style="font-size:48px;font-weight:700;color:#1a56db">${szavazott}</div>
-        <div style="font-size:16px;color:#6b7280">szavazott / ${belep} belépett</div>
-      </div>
-      <div style="text-align:center">
-        <div id="proj-timer" style="font-size:32px;font-weight:600;color:#6b7280">${lastVote?timeStr(lastVote):'–'}</div>
-        <div style="font-size:16px;color:#6b7280">utolsó szavazat</div>
-      </div>
-    </div>`;
-
-    const resultsHtml = mutat && sorted.length ? `<div class="proj-results">
-      ${allapot==='potszavazas'?`<div style="font-size:16px;color:#d97706;margin-bottom:1rem;font-weight:600">🔄 Pótszavazás folyamatban</div>`:''}
+    // Eredmény nézet (ha mutatja)
+    const resultsHtml = mutat && sorted.length ? `
       ${sorted.map(([n,c])=>`<div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:18px;font-weight:500">${n}</span>
-          <span style="font-size:18px;font-weight:700;color:#1a56db">${c}</span>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:22px;font-weight:500;color:#1a1a1a">${n}</span>
+          <span style="font-size:22px;font-weight:700;color:${szinAlap}">${c}</span>
         </div>
-        <div style="background:#e5e7eb;border-radius:4px;height:22px;overflow:hidden">
-          <div style="height:100%;background:#1a56db;border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+        <div style="background:#e5e7eb;border-radius:6px;height:24px;overflow:hidden">
+          <div style="height:100%;background:${szinAlap};border-radius:6px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
         </div>
-      </div>`).join('')}
-    </div>` : '';
+      </div>`).join('')}` : '';
 
-    R(`<div class="proj"><div style="padding-top:2rem">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem">
-        <div style="font-size:28px;font-weight:700">${sz.cim}${allapot==='potszavazas'?' — Pótszavazás':''}</div>
-        <div style="font-size:13px;color:#9ca3af">Élő szavazás</div>
-      </div>
-      ${statsHtml}
-      <div class="proj-results-wrap">
-        ${resultsHtml}
-        <div class="proj-qr-side">
-          <div class="proj-qr-big" style="padding:12px"><div id="proj-qr"></div></div>
-          <div class="proj-qr-side-label">Szavazói QR</div>
+    // Számláló nézet (mindig látszik, de ha nincs eredmény akkor középen nagy)
+    const szamlaloHtml = `
+      <div style="text-align:center;margin-bottom:${mutat?'2rem':'0'}">
+        ${allapot==='potszavazas'?`<div style="font-size:22px;color:#d97706;font-weight:600;margin-bottom:1rem">🔄 Pótszavazás</div>`:''}
+        <div style="font-size:${mutat?'36':'96'}px;font-weight:700;color:${szinAlap};line-height:1;margin-bottom:${mutat?'8':'16'}px">
+          <span id="proj-szavazott">${szavazott}</span> / ${belep}
         </div>
-      </div>
-    </div></div>`);
-    setTimeout(()=>makeQR('proj-qr',mUrl,130),80);
+        <div style="font-size:${mutat?'16':'24'}px;color:#6b7280;margin-bottom:${mutat?'12':'24'}px">szavazat leadva</div>
+        <div style="background:#e5e7eb;border-radius:99px;height:${mutat?'16':'28'}px;overflow:hidden;max-width:${mutat?'400':'700'}px;margin:0 auto">
+          <div id="proj-bar" style="height:100%;background:${szinAlap};border-radius:99px;width:${pct}%;transition:width .5s"></div>
+        </div>
+        <div id="proj-timer" style="font-size:${mutat?'15':'20'}px;color:#9ca3af;margin-top:${mutat?'10':'20'}px">
+          ${lastVote?`Utolsó szavazat: ${timeStr(lastVote)}`:'Még nem érkezett szavazat'}
+        </div>
+      </div>`;
+
+    if (mutat) {
+      // Eredmény + számláló együtt
+      R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:32px;font-weight:700;margin-bottom:1.5rem;color:#1a1a1a">${sz.cim}${allapot==='potszavazas'?' — Pótszavazás':''}</div>
+        ${szamlaloHtml}
+        <div style="display:flex;gap:3rem;align-items:flex-start;margin-top:1.5rem">
+          <div style="flex:1">${resultsHtml}</div>
+          <div style="flex-shrink:0;text-align:center">
+            <div class="proj-qr-big" style="padding:12px"><div id="proj-qr"></div></div>
+            <div class="proj-qr-side-label">Szavazói QR</div>
+          </div>
+        </div>
+      </div>`);
+    } else {
+      // Csak számláló — nagy, látványos, középre igazítva
+      R(`<div style="width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff">
+        <div style="font-size:42px;font-weight:700;color:#1a1a1a;margin-bottom:2.5rem;text-align:center">${sz.cim}${allapot==='potszavazas'?' — Pótszavazás':''}</div>
+        ${szamlaloHtml}
+        <div style="position:fixed;bottom:2rem;right:2rem;text-align:center">
+          <div class="proj-qr-big" style="padding:10px"><div id="proj-qr"></div></div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:4px">Szavazói QR</div>
+        </div>
+      </div>`);
+    }
+    setTimeout(()=>makeQR('proj-qr',mUrl,mutat?120:100),80);
     return;
   }
 
@@ -966,7 +984,6 @@ function renderMobil() {
         <div class="success-icon">✅</div>
         <h1>Sikeresen bejelentkezve!</h1>
         <p style="color:#6b7280;margin-top:8px">Kérjük várd meg a szavazás kezdetét.</p>
-        <div style="margin-top:1rem;font-size:14px;color:#9ca3af">${belep} fő csatlakozott eddig</div>
         <div style="margin-top:8px;background:#f9fafb;border-radius:8px;padding:8px 14px;font-family:monospace;font-weight:700;font-size:18px;letter-spacing:.1em">${voterCode}</div>
       </div>
     `));
@@ -1080,7 +1097,15 @@ if (isKivetito) {
       const cnt = document.getElementById('proj-belep');
       if (cnt) cnt.textContent = entries.length;
     } else if (allapot==='szavazas'||allapot==='potszavazas') {
-      t1.textContent = sz.lastVoteTs ? timeStr(sz.lastVoteTs) : '–';
+      t1.textContent = sz.lastVoteTs ? `Utolsó szavazat: ${timeStr(sz.lastVoteTs)}` : 'Még nem érkezett szavazat';
+      const belep2 = Object.keys(sz.belepo||{}).length;
+      const szavazott2 = sz.voterCount||0;
+      const pct2 = belep2>0 ? Math.round(szavazott2/belep2*100) : 0;
+      const kész2 = szavazott2>=belep2 && belep2>0;
+      const bar = document.getElementById('proj-bar');
+      const szav = document.getElementById('proj-szavazott');
+      if (bar) { bar.style.width=pct2+'%'; bar.style.background=kész2?'#057a55':'#1a56db'; }
+      if (szav) szav.textContent = szavazott2;
     }
   }, 1000);
 }
