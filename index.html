@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.2</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.4</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -550,7 +550,7 @@ window.setAllapot = async (a) => {
     upd.lastVoteTs = null;
   }
   if (a==='szavazas') {
-    // Eredmények inicializálása külön objektumként
+    // Eredmények inicializálása - belepo-t NEM töröljük, megmaradnak a bejelentkezett felhasználók!
     const eredmenyek = {};
     (getSzavazas()?.jeloltek||[]).forEach(j => { eredmenyek[j] = 0; });
     upd.eredmenyek = eredmenyek;
@@ -993,6 +993,13 @@ function renderMobil() {
   const allapot = sz.allapot||'pre';
   const title = sz.cim||'Szavazás';
 
+  // Ha van voterCode sessionben de nincs a belepo-ban → újra bejegyezzük
+  if (voterCode && (allapot==='szavazas'||allapot==='potszavazas'||allapot==='qr')) {
+    if (!sz.belepo?.[voterCode] && sz.kodok?.[voterCode]) {
+      update(ref(db,`szavazasok/${szId}/belepo/${voterCode}`),{ts:Date.now()});
+    }
+  }
+
   // INAKTÍV vagy PRE fázis
   if (allapot==='inaktiv') {
     R(wrap(`<h1>${title}</h1><div class="info" style="text-align:center;padding:2rem">A szavazás még nem aktív.<br>Várd meg a szervező jelzését.</div>`));
@@ -1088,17 +1095,29 @@ window.belepKoddal = async szId => {
   if (!kod||kod.length<4) { err.style.display='block'; err.textContent='Add meg az egyedi kódodat!'; return; }
   const sz = DB.szavazasok?.[szId];
   if (!sz?.kodok?.[kod]) { err.style.display='block'; err.textContent='Érvénytelen kód!'; return; }
-  // Ha a kód már használt DE ez a saját sessionje (frissítés után)
-  if (sz.kodok[kod].hasznalt && !sz.belepo?.[kod]) {
+
+  const allapot = sz.allapot||'inaktiv';
+  const marHasznalt = sz.kodok[kod].hasznalt;
+  const benvan = !!sz.belepo?.[kod];
+
+  // QR fázisban: ha már használt és nem ő volt → hiba
+  if (allapot==='qr' && marHasznalt && !benvan) {
     err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
   }
-  // Belépés - ha már hasznalt (pl. frissítés után visszatér) csak sessiont állítjuk vissza
+
+  // Belépés
   voterCode = kod;
   sessionStorage.setItem('voterCode_' + szId, kod);
-  if (!sz.kodok[kod].hasznalt) {
+
+  // Csak akkor írunk Firebase-be ha még nem volt bejelentkezve
+  if (!marHasznalt) {
     await update(ref(db,`szavazasok/${szId}/belepo/${kod}`),{ts:Date.now()});
     await update(ref(db,`szavazasok/${szId}/kodok/${kod}`),{hasznalt:true});
+  } else if (!benvan) {
+    // Szavazás fázisban késve érkezők - belepo-ba felvesszük
+    await update(ref(db,`szavazasok/${szId}/belepo/${kod}`),{ts:Date.now()});
   }
+
   renderMobil();
 };
 
