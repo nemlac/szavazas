@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.2.0</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.11</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1045,6 +1045,7 @@ function renderMobil() {
         <p style="color:#6b7280;margin-top:8px">Kérjük várd meg a szavazás kezdetét.</p>
         <div style="margin-top:8px;background:#f9fafb;border-radius:8px;padding:8px 14px;font-family:monospace;font-weight:700;font-size:18px;letter-spacing:.1em">${voterCode}</div>
       </div>
+      <button class="btn btn-outline" style="margin-top:1rem;color:#c81e1e;border-color:#c81e1e" onclick="kilepSzavazo('${szId}')">Kilépés</button>
     `));
     return;
   }
@@ -1089,6 +1090,7 @@ function renderMobil() {
         }).join('')}
       </div>
       <button class="btn btn-primary" onclick="submitVote('${szId}')">Szavazat leadása</button>
+      <button class="btn btn-outline" style="margin-top:4px;color:#c81e1e;border-color:#c81e1e" onclick="kilepSzavazo('${szId}')">Kilépés</button>
     `));
     return;
   }
@@ -1133,6 +1135,22 @@ window.belepKoddal = async szId => {
 };
 
 // ujraBelep már nem kell - belepKoddal kezeli a késve érkezőket is
+
+window.kilepSzavazo = async szId => {
+  if (!confirm('Kilépsz? Újra be kell majd jelentkezned.')) return;
+  // sessionStorage törlése
+  sessionStorage.removeItem('voterCode_' + szId);
+  // belepo-ból törlés
+  if (voterCode) {
+    const upd = {};
+    upd[`szavazasok/${szId}/belepo/${voterCode}`] = null;
+    upd[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = false;
+    await update(ref(db), upd);
+  }
+  voterCode = null;
+  localVotes = {};
+  renderMobil();
+};
 
 window.toggleVote = (n,ch) => { localVotes[n]=ch; renderMobil(); };
 window.toggleVoteIdx = (i,ch) => {
