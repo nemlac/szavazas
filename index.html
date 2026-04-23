@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.4</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.5</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -993,10 +993,13 @@ function renderMobil() {
   const allapot = sz.allapot||'pre';
   const title = sz.cim||'Szavazás';
 
-  // Ha van voterCode sessionben de nincs a belepo-ban → újra bejegyezzük
+  // Ha van voterCode sessionben → szinkronizáljuk Firebase-zel
   if (voterCode && (allapot==='szavazas'||allapot==='potszavazas'||allapot==='qr')) {
-    if (!sz.belepo?.[voterCode] && sz.kodok?.[voterCode]) {
-      update(ref(db,`szavazasok/${szId}/belepo/${voterCode}`),{ts:Date.now()});
+    if (sz.kodok?.[voterCode]) {
+      const upd2 = {};
+      if (!sz.belepo?.[voterCode]) upd2[`szavazasok/${szId}/belepo/${voterCode}`] = {ts:Date.now()};
+      if (!sz.kodok[voterCode].hasznalt) upd2[`szavazasok/${szId}/kodok/${voterCode}/hasznalt`] = true;
+      if (Object.keys(upd2).length) update(ref(db), upd2);
     }
   }
 
@@ -1099,9 +1102,10 @@ window.belepKoddal = async szId => {
   const allapot = sz.allapot||'inaktiv';
   const marHasznalt = sz.kodok[kod].hasznalt;
   const benvan = !!sz.belepo?.[kod];
+  const marSzavazott = !!sz.naplo?.[kod];
 
-  // QR fázisban: ha már használt és nem ő volt → hiba
-  if (allapot==='qr' && marHasznalt && !benvan) {
+  // Ha a kód már használva van ÉS nem ez a saját sessionje → elutasítás
+  if (marHasznalt && !benvan) {
     err.style.display='block'; err.textContent='Ez a kód már be lett használva!'; return;
   }
 
@@ -1109,14 +1113,15 @@ window.belepKoddal = async szId => {
   voterCode = kod;
   sessionStorage.setItem('voterCode_' + szId, kod);
 
-  // Csak akkor írunk Firebase-be ha még nem volt bejelentkezve
+  // Firebase frissítés
+  const upd = {};
   if (!marHasznalt) {
-    await update(ref(db,`szavazasok/${szId}/belepo/${kod}`),{ts:Date.now()});
-    await update(ref(db,`szavazasok/${szId}/kodok/${kod}`),{hasznalt:true});
-  } else if (!benvan) {
-    // Szavazás fázisban késve érkezők - belepo-ba felvesszük
-    await update(ref(db,`szavazasok/${szId}/belepo/${kod}`),{ts:Date.now()});
+    upd[`szavazasok/${szId}/kodok/${kod}/hasznalt`] = true;
   }
+  if (!benvan) {
+    upd[`szavazasok/${szId}/belepo/${kod}`] = {ts:Date.now()};
+  }
+  if (Object.keys(upd).length) await update(ref(db), upd);
 
   renderMobil();
 };
