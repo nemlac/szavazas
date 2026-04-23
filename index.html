@@ -235,7 +235,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.16</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.17</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1144,18 +1144,21 @@ window.kilepSzavazo = async szId => {
   voterCode = null;
   localVotes = {};
   if (kodToDelete) {
-    // Egy update hívással töröljük (null = törlés Firebase-ben)
     const upd = {};
     upd[`szavazasok/${szId}/belepo/${kodToDelete}`] = null;
     upd[`szavazasok/${szId}/kodok/${kodToDelete}/hasznalt`] = false;
+    console.log('Kilépés előtt belepo:', JSON.stringify(DB.szavazasok?.[szId]?.belepo));
     await update(ref(db), upd);
-    // Lokális DB cache-t is frissítjük azonnal
+    console.log('Firebase update kész');
+    // Lokális DB cache frissítés
     if (DB.szavazasok?.[szId]?.belepo) {
       delete DB.szavazasok[szId].belepo[kodToDelete];
     }
     if (DB.szavazasok?.[szId]?.kodok?.[kodToDelete]) {
       DB.szavazasok[szId].kodok[kodToDelete].hasznalt = false;
     }
+    console.log('Kilépés után belepo:', JSON.stringify(DB.szavazasok?.[szId]?.belepo));
+    console.log('belep count:', Object.keys(DB.szavazasok?.[szId]?.belepo||{}).length);
   }
   renderMobil();
 };
