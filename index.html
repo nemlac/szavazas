@@ -7,6 +7,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:16px;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+body.proj-mode{overflow:hidden;background:#fff}
 .wrap{max-width:700px;margin:0 auto;padding:1rem 1rem 3rem}
 .card{background:#fff;border-radius:12px;padding:1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 h1{font-size:22px;font-weight:600;margin-bottom:4px}
@@ -81,7 +82,7 @@ th{text-align:left;padding:8px 10px;border-bottom:2px solid #e5e7eb;color:#6b728
 td{padding:8px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
 tr:hover td{background:#f9fafb}
 /* KIVETÍTŐ */
-.proj{width:100%;padding:1.5rem 2.5rem;box-sizing:border-box;min-height:100vh}
+.proj{width:100%;padding:1.5rem 2.5rem;box-sizing:border-box;height:100vh;overflow:hidden}
 .proj-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:85vh;text-align:center;gap:2rem}
 .proj-qr-big{background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:inline-block}
 .proj-stat{font-size:80px;font-weight:700;color:#1a56db;line-height:1}
@@ -115,7 +116,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.36';
+const VERSION = 'v1.1.38';
 
 // ── Kivetítő dinamikus elrendezés ──
 // Rendelkezésre álló magasság: ~900px (1080 - fejléc - margók)
@@ -203,6 +204,9 @@ const timeStr = ts => { const s=secAgo(ts); if(s===null) return ''; if(s<=0) ret
 
 
 // ── Firebase listener ──
+// Kivetítőn body osztály
+if (isKivetito) document.body.classList.add('proj-mode');
+
 onValue(ref(db,'szavazasok'), snap => {
   const newData = snap.val() || {};
   if (isKivetito) {
@@ -302,7 +306,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.31</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">${VERSION}</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1540,4 +1544,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.36 -->
+</html><!-- v1.1.38 -->
