@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.29';
+const VERSION = 'v1.1.30';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -258,7 +258,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.29</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.30</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1174,34 +1174,39 @@ function renderKivetito() {
         ${potWinners.size?`<div style="font-size:13px;color:#9ca3af;margin-top:8px">⚡ = pótszavazással jutott be</div>`:''}
       </div>
 
-      <!-- Teljes lista -->
+      <!-- Teljes lista: nyertesek → pót nyertesek → pót vesztesek → nem nyertesek -->
       <div style="font-size:16px;font-weight:600;color:#6b7280;margin-bottom:10px">Teljes eredmény</div>
-      ${nonPot.slice(0,20).map(([n,c])=>{
-        const w=ws.has(n);
+      ${[
+        // 1. Sima nyertesek (nem pótszavazósok)
+        ...nonPot.filter(([n])=>ws.has(n)).map(([n,c])=>({n,c,potC:0,type:'winner'})),
+        // 2. Pótszavazás nyertesek
+        ...potSorted.filter(([n])=>ws.has(n)).map(([n,c,potC])=>({n,c,potC,type:'potwinner'})),
+        // 3. Pótszavazás vesztesek
+        ...potSorted.filter(([n])=>!ws.has(n)).map(([n,c,potC])=>({n,c,potC,type:'potloser'})),
+        // 4. Nem nyertesek (nem pótszavazósok)
+        ...nonPot.filter(([n])=>!ws.has(n)).map(([n,c])=>({n,c,potC:0,type:'loser'})),
+      ].slice(0,25).map(({n,c,potC,type})=>{
+        const isWinner = type==='winner'||type==='potwinner';
+        const isPot = type==='potwinner'||type==='potloser';
+        const color = type==='winner'?'#057a55':type==='potwinner'?'#d97706':type==='potloser'?'#9ca3af':'#9ca3af';
+        const barColor = type==='winner'?'#057a55':type==='potwinner'?'#d97706':'#d1d5db';
+        const nameColor = type==='winner'?'#065f46':type==='potwinner'?'#92400e':'#9ca3af';
+        const barVal = isPot ? potC : c;
+        const barMax = isPot ? Math.max(...potSorted.map(e=>e[2]),1) : allMax;
+        const prefix = type==='winner'?'✓ ':type==='potwinner'?'⚡ ':type==='potloser'?'⚡ ':'';
+        const scoreStr = isPot
+          ? `<span style="font-size:16px;font-weight:600;color:${color}">${c} <span style="font-size:13px">(+${potC} pót)</span></span>`
+          : `<span style="font-size:16px;font-weight:600;color:${color}">${c}</span>`;
         return `<div style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:16px;font-weight:${w?'700':'400'};color:${w?'#065f46':'#9ca3af'}">${w?'✓ ':''}${n}</span>
-            <span style="font-size:16px;font-weight:600;color:${w?'#057a55':'#9ca3af'}">${c}</span>
+            <span style="font-size:16px;font-weight:${isWinner?'700':'400'};color:${nameColor}">${prefix}${n}</span>
+            ${scoreStr}
           </div>
           <div style="background:#e5e7eb;border-radius:4px;height:16px;overflow:hidden">
-            <div style="height:100%;background:${w?'#057a55':'#d1d5db'};border-radius:4px;width:${Math.round(c/allMax*100)}%;transition:width .5s"></div>
+            <div style="height:100%;background:${barColor};border-radius:4px;width:${Math.round(barVal/barMax*100)}%;transition:width .5s"></div>
           </div>
         </div>`;
       }).join('')}
-      ${potSorted.length?`
-        <div style="font-size:14px;font-weight:600;color:#d97706;margin:12px 0 8px">⚡ Pótszavazás</div>
-        ${potSorted.map(([n,origC,potC])=>{
-          const w=ws.has(n);
-          return `<div style="margin-bottom:8px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-              <span style="font-size:16px;font-weight:${w?'700':'400'};color:${w?'#92400e':'#9ca3af'}">${w?'⚡ ':''}${n}</span>
-              <span style="font-size:16px;font-weight:600;color:${w?'#d97706':'#9ca3af'}">${origC} <span style="font-size:13px">(+${potC} pót)</span></span>
-            </div>
-            <div style="background:#e5e7eb;border-radius:4px;height:16px;overflow:hidden">
-              <div style="height:100%;background:${w?'#d97706':'#d1d5db'};border-radius:4px;width:${Math.round(potC/Math.max(...potSorted.map(e=>e[2]),1)*100)}%;transition:width .5s"></div>
-            </div>
-          </div>`;
-        }).join('')}`:''}
     </div>${VER_TAG}`);
   }
 }
@@ -1469,4 +1474,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.29 -->
+</html><!-- v1.1.30 -->
