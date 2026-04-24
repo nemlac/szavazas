@@ -1,4 +1,4 @@
-<!-- v1.1.39 -->
+<!-- v1.2.0 -->
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -117,7 +117,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.39';
+const VERSION = 'v1.2.0';
 
 // ── Kivetítő dinamikus elrendezés ──
 // Rendelkezésre álló magasság: ~900px (1080 - fejléc - margók)
@@ -987,31 +987,55 @@ function renderKivetito() {
   // PRE fázis
   if (allapot==='pre') {
     const sorok = (sz.kivetitoszoveg||'Rövidesen kezdődik a szavazás!').split('\n');
-    R(`<div class="proj"><div class="proj-center">
-      <div style="font-size:42px;font-weight:700;color:#1a1a1a;text-align:center">${sz.cim||''}</div>
-      ${sorok.map((s,i)=>`<div style="font-size:${i===0?'28':'22'}px;color:#374151;text-align:center">${s}</div>`).join('')}
-    </div>${VER_TAG}</div>`);
+    R(`<div style="width:100%;min-height:100vh;background:#1A2235;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;padding:2rem;text-align:center">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="140" height="26" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#FFFFFF">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text>
+        </svg>
+        <div style="width:1px;height:32px;background:#374151;margin:0 4px"></div>
+        <div style="text-align:left">
+          <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:-.3px">Votum</div>
+          <div style="font-size:11px;color:#4F8EF7">by NNLC</div>
+        </div>
+      </div>
+      <div style="font-size:42px;font-weight:700;color:#fff">${sz.cim||''}</div>
+      ${sorok.map((s,i)=>`<div style="font-size:${i===0?'24':'18'}px;color:#9ca3af">${s}</div>`).join('')}
+      <div style="font-size:11px;color:#4b5563;margin-top:.5rem">${VERSION}</div>
+    </div>`);
     return;
   }
 
   // QR fázis
   if (allapot==='qr') {
     const lastEntry = belep>0 ? Math.max(...Object.values(sz.belepo||{}).map(e=>e.ts||0)) : null;
-    R(`<div class="proj"><div class="proj-center">
-      <div style="font-size:32px;font-weight:700">${sz.cim}</div>
+    R(`<div style="width:100%;min-height:100vh;background:#1A2235;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;padding:2rem;text-align:center">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="120" height="22" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#FFFFFF">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text>
+        </svg>
+        <div style="width:1px;height:28px;background:#374151;margin:0 4px"></div>
+        <div style="text-align:left">
+          <div style="font-size:16px;font-weight:700;color:#fff">Votum</div>
+          <div style="font-size:10px;color:#4F8EF7">by NNLC</div>
+        </div>
+      </div>
+      <div style="font-size:28px;font-weight:700;color:#fff">${sz.cim}</div>
       <div class="proj-qr-big"><div id="proj-qr"></div></div>
       <div style="font-size:14px;color:#9ca3af">Olvasd be a QR kódot, majd add meg az egyedi kódodat!</div>
       <div style="display:flex;gap:4rem;align-items:center">
         <div style="text-align:center">
-          <div id="proj-belep" class="proj-stat">${belep}</div>
-          <div class="proj-stat-label">bejelentkezett</div>
+          <div id="proj-belep" style="font-size:64px;font-weight:700;color:#4F8EF7">${belep}</div>
+          <div style="font-size:16px;color:#9ca3af">bejelentkezett</div>
         </div>
         <div style="text-align:center">
-          <div id="proj-timer" style="font-size:28px;font-weight:600;color:#6b7280">${lastEntry?timeStr(lastEntry):'–'}</div>
-          <div class="proj-stat-label">utolsó belépés</div>
+          <div id="proj-timer" style="font-size:24px;font-weight:600;color:#6b7280">${lastEntry?timeStr(lastEntry):'–'}</div>
+          <div style="font-size:16px;color:#9ca3af">utolsó belépés</div>
         </div>
       </div>
-    </div></div>`);
+      <div style="font-size:11px;color:#4b5563">${VERSION}</div>
+    </div>`);
     setTimeout(()=>makeQR('proj-qr',mUrl,240),80);
     return;
   }
@@ -1050,7 +1074,14 @@ function renderKivetito() {
 
     if (mutat) {
       R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column">
-        <div style="font-size:32px;font-weight:700;margin-bottom:0.8rem">${sz.cim}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem;padding-bottom:0.6rem;border-bottom:1px solid #e5e7eb">
+          <div style="font-size:28px;font-weight:700;color:#1A2235">${sz.cim}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <svg width="80" height="15" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+            <div style="width:1px;height:18px;background:#d1d5db"></div>
+            <div><div style="font-size:12px;font-weight:700;color:#1A2235">Votum</div><div style="font-size:9px;color:#4F8EF7">by NNLC</div></div>
+          </div>
+        </div>
         ${szamlaloHtml}
         <div style="display:flex;gap:3rem;align-items:flex-start">
           <div style="flex:1">${resultsHtml}</div>
@@ -1062,6 +1093,11 @@ function renderKivetito() {
       </div>${VER_TAG}`);
     } else {
       R(`<div style="width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff">
+        <div style="position:absolute;top:1.5rem;right:2rem;display:flex;align-items:center;gap:8px">
+          <svg width="80" height="15" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+          <div style="width:1px;height:18px;background:#d1d5db"></div>
+          <div><div style="font-size:12px;font-weight:700;color:#1A2235">Votum</div><div style="font-size:9px;color:#4F8EF7">by NNLC</div></div>
+        </div>
         <div style="font-size:42px;font-weight:700;margin-bottom:2rem;text-align:center">${sz.cim}</div>
         ${szamlaloHtml}
         <div style="position:fixed;bottom:2rem;right:2rem;text-align:center">
@@ -1094,7 +1130,14 @@ function renderKivetito() {
     const vanPotEredmeny = potSorted.some(([,c])=>c>0);
 
     R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column">
-      <div style="font-size:28px;font-weight:700;margin-bottom:0.8rem">${sz.cim}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem;padding-bottom:0.6rem;border-bottom:1px solid #e5e7eb">
+        <div style="font-size:24px;font-weight:700;color:#1A2235">${sz.cim}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <svg width="80" height="15" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+          <div style="width:1px;height:18px;background:#d1d5db"></div>
+          <div><div style="font-size:12px;font-weight:700;color:#1A2235">Votum</div><div style="font-size:9px;color:#4F8EF7">by NNLC</div></div>
+        </div>
+      </div>
 
       <!-- Pótszavazás számláló -->
       <div style="text-align:center;margin-bottom:1rem">
@@ -1160,7 +1203,14 @@ function renderKivetito() {
     const defSet = new Set(definite);
 
     R(`<div class="proj"><div style="padding-top:1.5rem">
-      <div style="font-size:28px;font-weight:700;margin-bottom:1rem">${sz.cim} — Eredmény</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid #e5e7eb">
+        <div style="font-size:26px;font-weight:700;color:#1A2235">${sz.cim} — Eredmény</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <svg width="80" height="15" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+          <div style="width:1px;height:18px;background:#d1d5db"></div>
+          <div><div style="font-size:12px;font-weight:700;color:#1A2235">Votum</div><div style="font-size:9px;color:#4F8EF7">by NNLC</div></div>
+        </div>
+      </div>
       ${defSet.size?`<div style="font-size:20px;font-weight:600;color:#057a55;margin-bottom:0.5rem">✓ Bekerültek: ${[...defSet].join(', ')}</div>`:''}
       <div style="font-size:20px;font-weight:600;color:#d97706;margin-bottom:1.5rem">⚡ Pótszavazásra megy: ${tieInfo?.tied?.join(', ')||''}</div>
       ${(() => {
@@ -1192,7 +1242,14 @@ function renderKivetito() {
     const topPot = sorted.slice(0,sz.potSpotsNeeded||1).map(([n])=>n);
 
     R(`<div class="proj"><div style="padding-top:1.5rem">
-      <div style="font-size:28px;font-weight:700;margin-bottom:1rem">${sz.cim} — Pótszavazás eredménye</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid #e5e7eb">
+        <div style="font-size:26px;font-weight:700;color:#1A2235">${sz.cim} — Pótszavazás eredménye</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <svg width="80" height="15" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+          <div style="width:1px;height:18px;background:#d1d5db"></div>
+          <div><div style="font-size:12px;font-weight:700;color:#1A2235">Votum</div><div style="font-size:9px;color:#4F8EF7">by NNLC</div></div>
+        </div>
+      </div>
       ${topPot.length?`<div style="font-size:20px;font-weight:600;color:#057a55;margin-bottom:1.5rem">✓ Pótszavazáson bekerült: ${topPot.join(', ')}</div>`:''}
       ${sorted.map(([n,c])=>{
         const w=topPot.includes(n);
@@ -1231,7 +1288,14 @@ function renderKivetito() {
     const allMax = Math.max(...nonPot.map(e=>e[1]), ...potSorted.map(e=>e[1]), 1);
 
     R(`<div class="proj" style="padding:1.5rem 2.5rem">
-      <div style="font-size:32px;font-weight:700;margin-bottom:1.5rem">${sz.cim} — Végeredmény</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid #e5e7eb">
+        <div style="font-size:28px;font-weight:700;color:#1A2235">${sz.cim} — Végeredmény</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <svg width="80" height="15" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+          <div style="width:1px;height:18px;background:#d1d5db"></div>
+          <div><div style="font-size:12px;font-weight:700;color:#1A2235">Votum</div><div style="font-size:9px;color:#4F8EF7">by NNLC</div></div>
+        </div>
+      </div>
 
       <!-- Bekerültek -->
       <div style="margin-bottom:1.5rem">
@@ -1545,4 +1609,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.39 -->
+</html><!-- v1.2.0 -->
