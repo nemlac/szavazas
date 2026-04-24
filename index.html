@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.27';
+const VERSION = 'v1.1.28';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.27</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.28</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1004,6 +1004,7 @@ function renderKivetito() {
 
   // PÓTSZAVAZÁS fázis
   if (allapot==='potszavazas') {
+    const mutat = sz.mutatEredmeny !== false;
     const origRes = sz.eredmenyek||{};
     const potRes = sz.potEredmenyek||{};
     const potJeloltek = sz.potJeloltek||[];
@@ -1431,4 +1432,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html>
+</html><!-- v1.1.28 -->
