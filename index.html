@@ -1,3 +1,4 @@
+<!-- v1.1.39 -->
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -116,7 +117,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.38';
+const VERSION = 'v1.1.39';
 
 // ── Kivetítő dinamikus elrendezés ──
 // Rendelkezésre álló magasság: ~900px (1080 - fejléc - margók)
@@ -385,8 +386,8 @@ function tabSzavazasok() {
     </div>
     <label class="field">Eredmény mutatása szavazás közben a kivetítőn?</label>
     <select id="sz-show-res">
-      <option value="igen" ${sz.mutatEredmeny!==false?'selected':''}>Igen</option>
-      <option value="nem" ${sz.mutatEredmeny===false?'selected':''}>Nem</option>
+      <option value="nem" ${sz.mutatEredmeny===false||sz.mutatEredmeny===undefined?'selected':''}>Nem</option>
+      <option value="igen" ${sz.mutatEredmeny===true?'selected':''}>Igen</option>
     </select>
     <div class="row" style="margin-bottom:1rem">
       <button class="btn btn-primary btn-sm" onclick="saveSzSettings()">Mentés</button>
@@ -441,7 +442,7 @@ window.ujSzavazas = async () => {
   const id = 'sz_' + Date.now();
   await set(ref(db,`szavazasok/${id}`), {
     cim: 'Új szavazás', allapot: 'inaktiv', letrehozva: Date.now(),
-    maxValaszt: 1, jeloltek: [], mutatEredmeny: true,
+    maxValaszt: 1, jeloltek: [], mutatEredmeny: false, minMaxKotelező: true,
     kivetitoszoveg: 'Rövidesen kezdődik a szavazás!\nKérjük készítsék elő mobiljaikat.'
   });
   selectedSzavazasId = id;
@@ -1544,4 +1545,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.38 -->
+</html><!-- v1.1.39 -->
