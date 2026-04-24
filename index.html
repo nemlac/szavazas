@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.30';
+const VERSION = 'v1.1.31';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -258,7 +258,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.30</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.31</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -466,8 +466,9 @@ function tabVezerles() {
   const tieWarn = tieInfo ? `<div class="warn">
     <h3>⚠️ Holtverseny!</h3>
     <p>Egyenlő szavazattal: <b>${tieInfo.tied.join(', ')}</b>${tieInfo.spotsNeeded>1?` · ${tieInfo.spotsNeeded} hely szükséges`:''}</p>
+    <p style="font-size:12px;color:#92400e;margin-top:4px">Nyomd meg a Lezárás gombot — az eredmény megjelenik a kivetítőn, utána dönthetsz a pótszavazásról.</p>
     <div class="row">
-      <button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Pótszavazás indítása</button>
+      <button class="btn btn-danger btn-sm" onclick="lezarasElonezet()">Lezárás + eredmény kivetítőre</button>
       <button class="btn btn-outline btn-sm" onclick="lezaras(false)">Lezárás így</button>
     </div>
   </div>` : '';
@@ -1474,4 +1475,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.30 -->
+</html><!-- v1.1.31 -->
