@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.35';
+const VERSION = 'v1.1.36';
 
 // ── Kivetítő dinamikus elrendezés ──
 // Rendelkezésre álló magasság: ~900px (1080 - fejléc - margók)
@@ -1476,7 +1476,7 @@ window.submitVote = async szId => {
 
   const maxV2 = allapot==='potszavazas' ? (sz.potSpotsNeeded||1) : (sz.maxValaszt||1);
   const minMaxKot = sz.minMaxKotelező && allapot!=='potszavazas';
-  console.log('minMaxKot:', minMaxKot, 'minMaxKotelező:', sz.minMaxKotelező, 'picked:', picked.length, 'maxV2:', maxV2);
+
   if (minMaxKot && picked.length < maxV2) {
     alert(`Pontosan ${maxV2} jelöltet kell választanod! (Most ${picked.length} van kiválasztva)`);
     return;
@@ -1540,4 +1540,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.35 -->
+</html><!-- v1.1.36 -->
