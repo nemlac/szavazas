@@ -1,4 +1,4 @@
-<!-- v1.2.0 -->
+<!-- v1.2.1 -->
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -117,7 +117,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.2.0';
+const VERSION = 'v1.2.1';
 
 // ── Kivetítő dinamikus elrendezés ──
 // Rendelkezésre álló magasság: ~900px (1080 - fejléc - margók)
@@ -197,7 +197,18 @@ onAuthStateChanged(auth, user => {
 
 // ── Helpers ──
 const R = html => document.getElementById('root').innerHTML = html;
-const wrap = c => `<div class="wrap"><div class="card">${c}</div><div style="text-align:center;font-size:11px;color:#d1d5db;padding:4px 0 8px">${VERSION}</div></div>`;
+const BRAND_HEADER = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:10px;border-bottom:0.5px solid #e5e7eb">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg width="70" height="13" viewBox="0 0 300 56" xmlns="http://www.w3.org/2000/svg"><polyline points="0,24 13,24 20,7 30,41 40,10 48,36 55,24 72,24" transform="translate(14,4)" fill="none" stroke="#4F8EF7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><text font-family="Arial Black, Arial, sans-serif" font-size="32" letter-spacing="-1.5" y="38"><tspan x="94" font-weight="900" fill="#1A2235">Conf</tspan><tspan font-weight="300" font-family="Arial, sans-serif" fill="#4F8EF7" letter-spacing="-0.5">tech</tspan></text></svg>
+      <div style="width:1px;height:16px;background:#e5e7eb;margin:0 2px"></div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#1A2235;letter-spacing:-.2px">Votum</div>
+        <div style="font-size:9px;color:#4F8EF7;line-height:1">by NNLC</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#d1d5db">${VERSION}</div>
+  </div>`;
+const wrap = c => `<div class="wrap"><div class="card">${BRAND_HEADER}${c}</div></div>`;
 const esc = s => String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('hu') : '-';
 const secAgo = ts => ts ? Math.round((Date.now()-ts)/1000) : null;
@@ -1609,4 +1620,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.2.0 -->
+</html><!-- v1.2.1 -->
