@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.28';
+const VERSION = 'v1.1.29';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -159,7 +159,23 @@ const timeStr = ts => { const s=secAgo(ts); if(s===null) return ''; if(s<=0) ret
 
 
 // ── Firebase listener ──
-onValue(ref(db,'szavazasok'), snap => { DB.szavazasok = snap.val() || {}; renderApp(); });
+onValue(ref(db,'szavazasok'), snap => {
+  const newData = snap.val() || {};
+  if (isKivetito) {
+    // Kivetítőn: csak akkor renderelünk újra ha az állapot vagy a struktúra változott
+    // (nem csak a számláló értékek)
+    const aktivId = DB.aktiv;
+    const oldSz = DB.szavazasok?.[aktivId];
+    const newSz = newData[aktivId];
+    const oldHash = JSON.stringify({a:oldSz?.allapot,j:oldSz?.jeloltek,p:oldSz?.potJeloltek,n:oldSz?.nyertesek,b:Object.keys(oldSz?.belepo||{}).length});
+    const newHash = JSON.stringify({a:newSz?.allapot,j:newSz?.jeloltek,p:newSz?.potJeloltek,n:newSz?.nyertesek,b:Object.keys(newSz?.belepo||{}).length});
+    DB.szavazasok = newData;
+    if (oldHash !== newHash) renderApp();
+    // Számlálót a setInterval frissíti villanás nélkül
+  } else {
+    DB.szavazasok = newData; renderApp();
+  }
+});
 onValue(ref(db,'aktiv'), snap => { DB.aktiv = snap.val() || null; renderApp(); });
 
 // ── Első render ──
@@ -242,7 +258,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.28</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.29</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1129,14 +1145,19 @@ function renderKivetito() {
     const res = sz.eredmenyek||{};
     const potRes = sz.potEredmenyek||{};
     const potJeloltek = sz.potJeloltek||[];
-    // Ki jutott be pótszavazással?
     const potWinners = new Set(nyertesek.filter(n=>potJeloltek.includes(n)));
     const ws = new Set(nyertesek);
-    // Teljes lista: minden jelölt, rendezve
-    const allRes = {...res};
-    Object.entries(potRes).forEach(([k,v])=>{ allRes[k]=(allRes[k]||0)+v; });
-    const sorted = Object.entries(allRes).sort((a,b)=>b[1]-a[1]);
-    const max = Math.max(...sorted.map(e=>e[1]),1);
+    const potSet = new Set(potJeloltek);
+
+    // Sorrend: nem-pótszavazósok az eredeti eredmény szerint,
+    // majd pótszavazók a pótszavazás eredménye szerint
+    const nonPot = Object.entries(res)
+      .filter(([n])=>!potSet.has(n))
+      .sort((a,b)=>b[1]-a[1]);
+    const potSorted = potJeloltek
+      .map(n=>[n, res[n]||0, potRes[n]||0])
+      .sort((a,b)=>b[2]-a[2]);
+    const allMax = Math.max(...nonPot.map(e=>e[1]), ...potSorted.map(e=>e[1]), 1);
 
     R(`<div class="proj" style="padding:2rem;max-width:1000px;margin:0 auto">
       <div style="font-size:32px;font-weight:700;margin-bottom:1.5rem">${sz.cim} — Végeredmény</div>
@@ -1155,18 +1176,32 @@ function renderKivetito() {
 
       <!-- Teljes lista -->
       <div style="font-size:16px;font-weight:600;color:#6b7280;margin-bottom:10px">Teljes eredmény</div>
-      ${sorted.slice(0,15).map(([n,c])=>{
-        const w=ws.has(n), pw=potWinners.has(n);
+      ${nonPot.slice(0,20).map(([n,c])=>{
+        const w=ws.has(n);
         return `<div style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:16px;font-weight:${w?'700':'400'};color:${w?(pw?'#92400e':'#065f46'):'inherit'}">${pw?'⚡ ':w?'✓ ':''}${n}</span>
-            <span style="font-size:16px;font-weight:600;color:${w?(pw?'#d97706':'#057a55'):'#9ca3af'}">${c}</span>
+            <span style="font-size:16px;font-weight:${w?'700':'400'};color:${w?'#065f46':'#9ca3af'}">${w?'✓ ':''}${n}</span>
+            <span style="font-size:16px;font-weight:600;color:${w?'#057a55':'#9ca3af'}">${c}</span>
           </div>
           <div style="background:#e5e7eb;border-radius:4px;height:16px;overflow:hidden">
-            <div style="height:100%;background:${w?(pw?'#d97706':'#057a55'):'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+            <div style="height:100%;background:${w?'#057a55':'#d1d5db'};border-radius:4px;width:${Math.round(c/allMax*100)}%;transition:width .5s"></div>
           </div>
         </div>`;
       }).join('')}
+      ${potSorted.length?`
+        <div style="font-size:14px;font-weight:600;color:#d97706;margin:12px 0 8px">⚡ Pótszavazás</div>
+        ${potSorted.map(([n,origC,potC])=>{
+          const w=ws.has(n);
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:16px;font-weight:${w?'700':'400'};color:${w?'#92400e':'#9ca3af'}">${w?'⚡ ':''}${n}</span>
+              <span style="font-size:16px;font-weight:600;color:${w?'#d97706':'#9ca3af'}">${origC} <span style="font-size:13px">(+${potC} pót)</span></span>
+            </div>
+            <div style="background:#e5e7eb;border-radius:4px;height:16px;overflow:hidden">
+              <div style="height:100%;background:${w?'#d97706':'#d1d5db'};border-radius:4px;width:${Math.round(potC/Math.max(...potSorted.map(e=>e[2]),1)*100)}%;transition:width .5s"></div>
+            </div>
+          </div>`;
+        }).join('')}`:''}
     </div>${VER_TAG}`);
   }
 }
@@ -1403,8 +1438,10 @@ function makeQR(id, url, size) {
   new QRCode(el,{text:url,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
 }
 
-// ── Kivetítő időfrissítő ──
+// ── Kivetítő időfrissítő + villanás megakadályozás ──
+let _lastProjHash = '';
 if (isKivetito) {
+  // Időfrissítő - csak DOM elemeket frissít, nem renderel újra
   setInterval(()=>{
     const t1 = document.getElementById('proj-timer');
     if (!t1) return;
@@ -1432,4 +1469,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.28 -->
+</html><!-- v1.1.29 -->
