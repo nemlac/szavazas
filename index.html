@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.33';
+const VERSION = 'v1.1.34';
 
 // ── Kivetítő dinamikus elrendezés ──
 // Rendelkezésre álló magasság: ~900px (1080 - fejléc - margók)
@@ -372,7 +372,13 @@ function tabSzavazasok() {
     <label class="field">Kivetítő szöveg (PRE fázisban jelenik meg)</label>
     <textarea id="sz-kivetito-szoveg" style="height:80px">${esc(sz.kivetitoszoveg||'')}</textarea>
     <label class="field">Max választható jelöltek száma</label>
-    <input type="number" id="sz-max" value="${sz.maxValaszt||1}" min="1" max="45" style="width:100px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <input type="number" id="sz-max" value="${sz.maxValaszt||1}" min="1" max="200" style="width:100px;margin:0">
+      <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;margin:0">
+        <input type="checkbox" id="sz-minmax" ${sz.minMaxKotelező?'checked':''} style="width:16px;height:16px;accent-color:#1a56db">
+        Pontosan ennyi kötelező (min = max)
+      </label>
+    </div>
     <label class="field">Eredmény mutatása szavazás közben a kivetítőn?</label>
     <select id="sz-show-res">
       <option value="igen" ${sz.mutatEredmeny!==false?'selected':''}>Igen</option>
@@ -481,12 +487,15 @@ window.saveSzSettings = async () => {
     cim: document.getElementById('sz-cim').value.trim(),
     kivetitoszoveg: document.getElementById('sz-kivetito-szoveg').value.trim(),
     maxValaszt: parseInt(document.getElementById('sz-max').value)||1,
-    mutatEredmeny: document.getElementById('sz-show-res').value === 'igen'
+    mutatEredmeny: document.getElementById('sz-show-res').value === 'igen',
+    minMaxKotelező: document.getElementById('sz-minmax').checked
   });
   alert('Mentve!');
 };
 window.deleteSz = async () => {
-  if (!confirm('Biztosan törlöd ezt a szavazást?')) return;
+  const sz = getSzavazas();
+  if (!confirm(`Biztosan törlöd "${sz?.cim||'ezt a szavazást'}"?\nMinden adata (jelöltek, kódok, szavazatok) véglegesen törlődik!`)) return;
+  if (DB.aktiv === selectedSzavazasId) await set(ref(db,'aktiv'), null);
   await remove(ref(db,`szavazasok/${selectedSzavazasId}`));
   selectedSzavazasId = null;
   renderAdmin();
@@ -567,6 +576,7 @@ function tabVezerles() {
       ${allapot==='potszavazas'&&potInfo?`<div class="warn" style="width:100%"><h3>⚠️ Ismét holtverseny!</h3><p>${potInfo.tied.join(', ')}</p><div class="row"><button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Új pótszavazás</button><button class="btn btn-outline btn-sm" onclick="lezarasPot(true)">Lezárás így</button></div></div>`:''}
       ${allapot==='lezarva'?`<button class="btn btn-success btn-sm" onclick="downloadEredmeny()">⬇ Eredmény letöltése</button>`:''}
       ${allapot!=='inaktiv'?`<button class="btn btn-danger btn-sm" onclick="resetSzavazas()">Inaktiválás</button>`:''}
+      ${allapot==='inaktiv'?`<button class="btn btn-danger btn-sm" onclick="deleteSz()" style="opacity:.7">🗑 Törlés</button>`:''}
     </div>
 
     ${allapot==='lezarva'||allapot==='potszavazas' ? renderEredmenyek(sz) : ''}`;
@@ -1369,7 +1379,7 @@ function renderMobil() {
     R(wrap(`
       <h1>${title}${allapot==='potszavazas'?' — Pótszavazás':''}</h1>
       ${allapot==='potszavazas'?`<div class="warn"><p>Holtverseny miatt pótszavazás. Válassz <b>${maxV}</b> jelöltet!</p></div>`:''}
-      <div class="counter">Kiválasztva: <span>${checked.length}</span> / ${maxV}</div>
+      <div class="counter">Kiválasztva: <span>${checked.length}</span> / ${maxV}${sz.minMaxKotelező?' (kötelező)':''}</div>
       <div class="cand-grid">
         ${jeloltek.map((c,i)=>{
           const ch=!!localVotes[c], dis=!ch&&checked.length>=maxV;
@@ -1464,6 +1474,12 @@ window.submitVote = async szId => {
   if (picked.length>maxV) { alert(`Legfeljebb ${maxV} jelöltet választhatsz!`); return; }
   if (!voterCode) { alert('Nincs érvényes bejelentkezés!'); return; }
 
+  const maxV2 = allapot==='potszavazas' ? (sz.potSpotsNeeded||1) : (sz.maxValaszt||1);
+  const minMaxKot = sz.minMaxKotelező && allapot!=='potszavazas';
+  if (minMaxKot && picked.length < maxV2) {
+    alert(`Pontosan ${maxV2} jelöltet kell választanod! (Most ${picked.length} van kiválasztva)`);
+    return;
+  }
   const upd = {};
   const resKey = allapot==='potszavazas'?'potEredmenyek':'eredmenyek';
   const naploKey2 = allapot==='potszavazas'?'potNaplo':'naplo';
@@ -1523,4 +1539,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.33 -->
+</html><!-- v1.1.34 -->
