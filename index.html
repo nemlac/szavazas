@@ -115,7 +115,43 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.31';
+const VERSION = 'v1.1.32';
+
+// ── Kivetítő dinamikus elrendezés ──
+function projLayout(count) {
+  if (count <= 15) return {cols:1, fontSize:20, barH:22, mb:10};
+  if (count <= 30) return {cols:2, fontSize:18, barH:18, mb:8};
+  if (count <= 50) return {cols:3, fontSize:15, barH:14, mb:6};
+  return {cols:3, fontSize:13, barH:12, mb:4}; // >50: görgetés
+}
+
+function projListHtml(items, opts) {
+  // items: [{name, value, color, barColor, prefix, scoreHtml}]
+  const {cols, fontSize, barH, mb} = opts;
+  if (cols === 1) {
+    return `<div>${items.map(it=>`
+      <div style="margin-bottom:${mb}px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:${fontSize}px;font-weight:${it.bold?'700':'400'};color:${it.nameColor}">${it.prefix||''}${it.name}</span>
+          ${it.scoreHtml}
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:${barH}px;overflow:hidden">
+          <div style="height:100%;background:${it.barColor};border-radius:4px;width:${it.pct}%;transition:width .5s"></div>
+        </div>
+      </div>`).join('')}</div>`;
+  }
+  // Multi-oszlop: CSS columns
+  return `<div style="columns:${cols};column-gap:2rem">${items.map(it=>`
+    <div style="margin-bottom:${mb}px;break-inside:avoid">
+      <div style="display:flex;justify-content:space-between;margin-bottom:2px;gap:8px">
+        <span style="font-size:${fontSize}px;font-weight:${it.bold?'700':'400'};color:${it.nameColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.prefix||''}${it.name}</span>
+        ${it.scoreHtml}
+      </div>
+      <div style="background:#e5e7eb;border-radius:3px;height:${barH}px;overflow:hidden">
+        <div style="height:100%;background:${it.barColor};border-radius:3px;width:${it.pct}%;transition:width .5s"></div>
+      </div>
+    </div>`).join('')}</div>`;
+}
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -982,16 +1018,12 @@ function renderKivetito() {
         </div>
       </div>`;
 
-    const resultsHtml = mutat && sorted.length ? sorted.map(([n,c])=>`
-      <div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:20px;font-weight:500">${n}</span>
-          <span style="font-size:20px;font-weight:700;color:${szin}">${c}</span>
-        </div>
-        <div style="background:#e5e7eb;border-radius:4px;height:22px;overflow:hidden">
-          <div style="height:100%;background:${szin};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
-        </div>
-      </div>`).join('') : '';
+    const layout1 = projLayout(sorted.length);
+    const resultsHtml = mutat && sorted.length ? projListHtml(sorted.map(([n,c])=>({
+      name:n, bold:false, nameColor:'#1a1a1a',
+      scoreHtml:`<span style="font-size:${layout1.fontSize}px;font-weight:700;color:${szin};flex-shrink:0">${c}</span>`,
+      barColor:szin, pct:Math.round(c/max*100)
+    })), layout1) : '';
 
     if (mutat) {
       R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column;padding:2rem">
@@ -1064,11 +1096,21 @@ function renderKivetito() {
               </div>`).join('')}
             <div style="height:1px;background:#e5e7eb;margin:12px 0"></div>`:''}
           <div style="font-size:16px;font-weight:600;color:#d97706;margin-bottom:8px">⚡ Pótszavazásban</div>
-          ${potSorted.map(([n,c])=>`
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:6px">
-              <span style="font-size:18px;font-weight:600;color:#92400e">${n}</span>
-              ${mutat && vanPotEredmeny?`<span style="font-size:18px;font-weight:700;color:#d97706">${c}</span>`:''}
-            </div>`).join('')}
+          ${(() => {
+            const lp = projLayout(potSorted.length);
+            if (potSorted.length <= 15) {
+              return potSorted.map(([n,c])=>`
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#fef3c7;border-radius:8px;margin-bottom:5px">
+                  <span style="font-size:${lp.fontSize}px;font-weight:600;color:#92400e">${n}</span>
+                  ${mutat && vanPotEredmeny?`<span style="font-size:${lp.fontSize}px;font-weight:700;color:#d97706">${c}</span>`:''}
+                </div>`).join('');
+            }
+            return `<div style="columns:2;column-gap:1rem">${potSorted.map(([n,c])=>`
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:#fef3c7;border-radius:6px;margin-bottom:4px;break-inside:avoid">
+                <span style="font-size:${lp.fontSize}px;font-weight:600;color:#92400e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n}</span>
+                ${mutat && vanPotEredmeny?`<span style="font-size:${lp.fontSize}px;font-weight:700;color:#d97706;flex-shrink:0;margin-left:6px">${c}</span>`:''}
+              </div>`).join('')}</div>`;
+          })()}
         </div>
         <!-- Jobb: QR -->
         <div style="flex-shrink:0;text-align:center">
@@ -1096,18 +1138,21 @@ function renderKivetito() {
       <div style="font-size:28px;font-weight:700;margin-bottom:1rem">${sz.cim} — Eredmény</div>
       ${defSet.size?`<div style="font-size:20px;font-weight:600;color:#057a55;margin-bottom:0.5rem">✓ Bekerültek: ${[...defSet].join(', ')}</div>`:''}
       <div style="font-size:20px;font-weight:600;color:#d97706;margin-bottom:1.5rem">⚡ Pótszavazásra megy: ${tieInfo?.tied?.join(', ')||''}</div>
-      ${sorted.map(([n,c])=>{
-        const w=defSet.has(n), t=tiedSet.has(n);
-        return `<div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:18px;font-weight:${w||t?'700':'400'};color:${w?'#057a55':t?'#d97706':'inherit'}">${w?'✓ ':t?'⚡ ':''}${n}</span>
-            <span style="font-size:18px;font-weight:600;color:${w?'#057a55':t?'#d97706':'#6b7280'}">${c}</span>
-          </div>
-          <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
-            <div style="height:100%;background:${w?'#057a55':t?'#d97706':'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
-          </div>
-        </div>`;
-      }).join('')}
+      ${(() => {
+        const lh = projLayout(sorted.length);
+        return projListHtml(sorted.map(([n,c])=>{
+          const w=defSet.has(n), t=tiedSet.has(n);
+          const barColor = w?'#057a55':t?'#d97706':'#d1d5db';
+          const nameColor = w?'#057a55':t?'#d97706':'inherit';
+          const valColor = w?'#057a55':t?'#d97706':'#6b7280';
+          return {
+            name:n, bold:w||t, nameColor,
+            prefix: w?'✓ ':t?'⚡ ':'',
+            scoreHtml:`<span style="font-size:${lh.fontSize}px;font-weight:600;color:${valColor};flex-shrink:0">${c}</span>`,
+            barColor, pct:Math.round(c/max*100)
+          };
+        }), lh);
+      })()}
     </div>${VER_TAG}</div>`);
     return;
   }
@@ -1177,37 +1222,30 @@ function renderKivetito() {
 
       <!-- Teljes lista: nyertesek → pót nyertesek → pót vesztesek → nem nyertesek -->
       <div style="font-size:16px;font-weight:600;color:#6b7280;margin-bottom:10px">Teljes eredmény</div>
-      ${[
-        // 1. Sima nyertesek (nem pótszavazósok)
-        ...nonPot.filter(([n])=>ws.has(n)).map(([n,c])=>({n,c,potC:0,type:'winner'})),
-        // 2. Pótszavazás nyertesek
-        ...potSorted.filter(([n])=>ws.has(n)).map(([n,c,potC])=>({n,c,potC,type:'potwinner'})),
-        // 3. Pótszavazás vesztesek
-        ...potSorted.filter(([n])=>!ws.has(n)).map(([n,c,potC])=>({n,c,potC,type:'potloser'})),
-        // 4. Nem nyertesek (nem pótszavazósok)
-        ...nonPot.filter(([n])=>!ws.has(n)).map(([n,c])=>({n,c,potC:0,type:'loser'})),
-      ].slice(0,25).map(({n,c,potC,type})=>{
-        const isWinner = type==='winner'||type==='potwinner';
-        const isPot = type==='potwinner'||type==='potloser';
-        const color = type==='winner'?'#057a55':type==='potwinner'?'#d97706':type==='potloser'?'#9ca3af':'#9ca3af';
-        const barColor = type==='winner'?'#057a55':type==='potwinner'?'#d97706':'#d1d5db';
-        const nameColor = type==='winner'?'#065f46':type==='potwinner'?'#92400e':'#9ca3af';
-        const barVal = isPot ? potC : c;
-        const barMax = isPot ? Math.max(...potSorted.map(e=>e[2]),1) : allMax;
-        const prefix = type==='winner'?'✓ ':type==='potwinner'?'⚡ ':type==='potloser'?'⚡ ':'';
-        const scoreStr = isPot
-          ? `<span style="font-size:16px;font-weight:600;color:${color}">${c} <span style="font-size:13px">(+${potC} pót)</span></span>`
-          : `<span style="font-size:16px;font-weight:600;color:${color}">${c}</span>`;
-        return `<div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:16px;font-weight:${isWinner?'700':'400'};color:${nameColor}">${prefix}${n}</span>
-            ${scoreStr}
-          </div>
-          <div style="background:#e5e7eb;border-radius:4px;height:16px;overflow:hidden">
-            <div style="height:100%;background:${barColor};border-radius:4px;width:${Math.round(barVal/barMax*100)}%;transition:width .5s"></div>
-          </div>
-        </div>`;
-      }).join('')}
+      ${(() => {
+        const allItems = [
+          ...nonPot.filter(([n])=>ws.has(n)).map(([n,c])=>({n,c,potC:0,type:'winner'})),
+          ...potSorted.filter(([n])=>ws.has(n)).map(([n,c,potC])=>({n,c,potC,type:'potwinner'})),
+          ...potSorted.filter(([n])=>!ws.has(n)).map(([n,c,potC])=>({n,c,potC,type:'potloser'})),
+          ...nonPot.filter(([n])=>!ws.has(n)).map(([n,c])=>({n,c,potC:0,type:'loser'})),
+        ];
+        const lv = projLayout(allItems.length);
+        const potMax = Math.max(...potSorted.map(e=>e[2]),1);
+        return projListHtml(allItems.map(({n,c,potC,type})=>{
+          const isWinner = type==='winner'||type==='potwinner';
+          const isPot = type==='potwinner'||type==='potloser';
+          const barColor = type==='winner'?'#057a55':type==='potwinner'?'#d97706':'#d1d5db';
+          const nameColor = type==='winner'?'#065f46':type==='potwinner'?'#92400e':'#9ca3af';
+          const barVal = isPot ? potC : c;
+          const barMax2 = isPot ? potMax : allMax;
+          const prefix = type==='winner'?'✓ ':isPot?'⚡ ':'';
+          const valColor = type==='winner'?'#057a55':type==='potwinner'?'#d97706':'#9ca3af';
+          const scoreHtml = isPot
+            ? `<span style="font-size:${lv.fontSize-1}px;font-weight:600;color:${valColor};flex-shrink:0">${c}<span style="font-size:${lv.fontSize-3}px">(+${potC})</span></span>`
+            : `<span style="font-size:${lv.fontSize}px;font-weight:600;color:${valColor};flex-shrink:0">${c}</span>`;
+          return {name:n, bold:isWinner, nameColor, prefix, scoreHtml, barColor, pct:Math.round(barVal/barMax2*100)};
+        }), lv);
+      })()}
     </div>${VER_TAG}`);
   }
 }
@@ -1475,4 +1513,4 @@ if (isKivetito) {
 }
 </script>
 </body>
-</html><!-- v1.1.31 -->
+</html><!-- v1.1.32 -->
