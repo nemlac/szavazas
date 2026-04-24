@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.25';
+const VERSION = 'v1.1.26';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.25</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.26</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -941,70 +941,125 @@ function renderKivetito() {
   }
 
   // SZAVAZÁS fázis
-  if (allapot==='szavazas'||allapot==='potszavazas') {
+  if (allapot==='szavazas') {
     const mutat = sz.mutatEredmeny !== false;
-    const res = allapot==='potszavazas' ? (sz.potEredmenyek||{}) : (sz.eredmenyek||{});
-    const jeloltek = allapot==='potszavazas' ? (sz.potJeloltek||[]) : (sz.jeloltek||[]);
+    const res = sz.eredmenyek||{};
+    const jeloltek = sz.jeloltek||[];
     const sorted = jeloltek.map(n=>[n,res[n]||0]).sort((a,b)=>b[1]-a[1]);
     const max = Math.max(...sorted.map(e=>e[1]),1);
     const pct = belep>0 ? Math.round(szavazott/belep*100) : 0;
     const kész = szavazott>=belep && belep>0;
-    const szinAlap = kész ? '#057a55' : '#1a56db';
-    const szinVilagos = kész ? '#d1fae5' : '#dbeafe';
+    const szin = kész ? '#057a55' : '#1a56db';
 
-    // Eredmény nézet (ha mutatja)
-    const resultsHtml = mutat && sorted.length ? `
-      ${sorted.map(([n,c])=>`<div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:22px;font-weight:500;color:#1a1a1a">${n}</span>
-          <span style="font-size:22px;font-weight:700;color:${szinAlap}">${c}</span>
-        </div>
-        <div style="background:#e5e7eb;border-radius:6px;height:24px;overflow:hidden">
-          <div style="height:100%;background:${szinAlap};border-radius:6px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
-        </div>
-      </div>`).join('')}` : '';
-
-    // Számláló nézet (mindig látszik, de ha nincs eredmény akkor középen nagy)
     const szamlaloHtml = `
-      <div style="text-align:center;margin-bottom:${mutat?'2rem':'0'}">
-        ${allapot==='potszavazas'?`<div style="font-size:22px;color:#d97706;font-weight:600;margin-bottom:1rem">🔄 Pótszavazás</div>`:''}
-        <div style="font-size:${mutat?'36':'96'}px;font-weight:700;color:${szinAlap};line-height:1;margin-bottom:${mutat?'8':'16'}px">
+      <div style="text-align:center;margin-bottom:2rem">
+        <div style="font-size:${mutat?'48':'96'}px;font-weight:700;color:${szin};line-height:1;margin-bottom:8px">
           <span id="proj-szavazott">${szavazott}</span> / ${belep}
         </div>
-        <div style="font-size:${mutat?'16':'24'}px;color:#6b7280;margin-bottom:${mutat?'12':'24'}px">szavazat leadva</div>
-        <div style="background:#e5e7eb;border-radius:99px;height:${mutat?'16':'28'}px;overflow:hidden;max-width:${mutat?'400':'700'}px;margin:0 auto">
-          <div id="proj-bar" style="height:100%;background:${szinAlap};border-radius:99px;width:${pct}%;transition:width .5s"></div>
+        <div style="font-size:${mutat?'18':'24'}px;color:#6b7280;margin-bottom:12px">szavazat leadva</div>
+        <div style="background:#e5e7eb;border-radius:99px;height:${mutat?'16':'28'}px;overflow:hidden;max-width:${mutat?'500':'700'}px;margin:0 auto">
+          <div id="proj-bar" style="height:100%;background:${szin};border-radius:99px;width:${pct}%;transition:width .5s"></div>
         </div>
-        <div id="proj-timer" style="font-size:${mutat?'15':'20'}px;color:#9ca3af;margin-top:${mutat?'10':'20'}px">
+        <div id="proj-timer" style="font-size:16px;color:#9ca3af;margin-top:10px">
           ${lastVote?`Utolsó szavazat: ${timeStr(lastVote)}`:'Még nem érkezett szavazat'}
         </div>
       </div>`;
 
+    const resultsHtml = mutat && sorted.length ? sorted.map(([n,c])=>`
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:20px;font-weight:500">${n}</span>
+          <span style="font-size:20px;font-weight:700;color:${szin}">${c}</span>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:22px;overflow:hidden">
+          <div style="height:100%;background:${szin};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+        </div>
+      </div>`).join('') : '';
+
     if (mutat) {
-      // Eredmény + számláló együtt
-      R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:32px;font-weight:700;margin-bottom:1.5rem;color:#1a1a1a">${sz.cim}${allapot==='potszavazas'?' — Pótszavazás':''}</div>
+      R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column;padding:2rem">
+        <div style="font-size:32px;font-weight:700;margin-bottom:1rem">${sz.cim}</div>
         ${szamlaloHtml}
-        <div style="display:flex;gap:3rem;align-items:flex-start;margin-top:1.5rem">
+        <div style="display:flex;gap:3rem;align-items:flex-start">
           <div style="flex:1">${resultsHtml}</div>
           <div style="flex-shrink:0;text-align:center">
-            <div class="proj-qr-big" style="padding:12px"><div id="proj-qr"></div></div>
+            <div class="proj-qr-big" style="padding:10px"><div id="proj-qr"></div></div>
             <div class="proj-qr-side-label">Szavazói QR</div>
           </div>
         </div>
-      </div>`);
+      </div>${VER_TAG}`);
     } else {
-      // Csak számláló — nagy, látványos, középre igazítva
       R(`<div style="width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff">
-        <div style="font-size:42px;font-weight:700;color:#1a1a1a;margin-bottom:2.5rem;text-align:center">${sz.cim}${allapot==='potszavazas'?' — Pótszavazás':''}</div>
+        <div style="font-size:42px;font-weight:700;margin-bottom:2rem;text-align:center">${sz.cim}</div>
         ${szamlaloHtml}
         <div style="position:fixed;bottom:2rem;right:2rem;text-align:center">
           <div class="proj-qr-big" style="padding:10px"><div id="proj-qr"></div></div>
           <div style="font-size:12px;color:#9ca3af;margin-top:4px">Szavazói QR</div>
         </div>
-      </div>`);
+      </div>${VER_TAG}`);
     }
-    setTimeout(()=>makeQR('proj-qr',mUrl,mutat?120:100),80);
+    setTimeout(()=>makeQR('proj-qr',mUrl,mutat?110:100),80);
+    return;
+  }
+
+  // PÓTSZAVAZÁS fázis
+  if (allapot==='potszavazas') {
+    const origRes = sz.eredmenyek||{};
+    const potRes = sz.potEredmenyek||{};
+    const potJeloltek = sz.potJeloltek||[];
+    const maxV = sz.maxValaszt||1;
+    const origSorted = Object.entries(origRes).sort((a,b)=>b[1]-a[1]);
+    const cutoffScore = origSorted[maxV-1]?.[1]||0;
+    const definiteWinners = origSorted.filter(([,v])=>v>cutoffScore).map(([n])=>n);
+    const pct = belep>0 ? Math.round(szavazott/belep*100) : 0;
+    const kész = szavazott>=belep && belep>0;
+    const szin = kész ? '#057a55' : '#1a56db';
+
+    // Pótszavazás résztvevők eredménye (csak ha van szavazat)
+    const potSorted = potJeloltek.map(n=>[n,potRes[n]||0]).sort((a,b)=>b[1]-a[1]);
+    const potMax = Math.max(...potSorted.map(e=>e[1]),1);
+    const vanPotEredmeny = potSorted.some(([,c])=>c>0);
+
+    R(`<div class="proj" style="height:100vh;display:flex;flex-direction:column;padding:2rem">
+      <div style="font-size:28px;font-weight:700;margin-bottom:1rem">${sz.cim}</div>
+
+      <!-- Pótszavazás számláló -->
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div style="font-size:14px;color:#d97706;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">🔄 Pótszavazás</div>
+        <div style="font-size:52px;font-weight:700;color:${szin};line-height:1;margin-bottom:6px">
+          <span id="proj-szavazott">${szavazott}</span> / ${belep}
+        </div>
+        <div style="background:#e5e7eb;border-radius:99px;height:14px;overflow:hidden;max-width:500px;margin:0 auto 8px">
+          <div id="proj-bar" style="height:100%;background:${szin};border-radius:99px;width:${pct}%;transition:width .5s"></div>
+        </div>
+        <div id="proj-timer" style="font-size:14px;color:#9ca3af">${lastVote?`Utolsó szavazat: ${timeStr(lastVote)}`:'Még nem érkezett szavazat'}</div>
+      </div>
+
+      <div style="display:flex;gap:3rem;align-items:flex-start;flex:1">
+        <!-- Bal: bekerültek + pótszavazók -->
+        <div style="flex:1">
+          ${definiteWinners.length?`
+            <div style="font-size:16px;font-weight:600;color:#057a55;margin-bottom:8px">✓ Bekerültek</div>
+            ${definiteWinners.map(n=>`
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#d1fae5;border-radius:8px;margin-bottom:6px">
+                <span style="font-size:18px;font-weight:600;color:#065f46">${n}</span>
+              </div>`).join('')}
+            <div style="height:1px;background:#e5e7eb;margin:12px 0"></div>`:''}
+          <div style="font-size:16px;font-weight:600;color:#d97706;margin-bottom:8px">⚡ Pótszavazásban</div>
+          ${potSorted.map(([n,c])=>`
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:6px">
+              <span style="font-size:18px;font-weight:600;color:#92400e">${n}</span>
+              ${vanPotEredmeny?`<span style="font-size:18px;font-weight:700;color:#d97706">${c}</span>`:''}
+            </div>`).join('')}
+        </div>
+        <!-- Jobb: QR -->
+        <div style="flex-shrink:0;text-align:center">
+          <div class="proj-qr-big" style="padding:10px"><div id="proj-qr"></div></div>
+          <div class="proj-qr-side-label">Szavazói QR</div>
+        </div>
+      </div>
+    </div>${VER_TAG}`);
+    setTimeout(()=>makeQR('proj-qr',mUrl,110),80);
     return;
   }
 
@@ -1073,34 +1128,45 @@ function renderKivetito() {
     const res = sz.eredmenyek||{};
     const potRes = sz.potEredmenyek||{};
     const potJeloltek = sz.potJeloltek||[];
+    // Ki jutott be pótszavazással?
+    const potWinners = new Set(nyertesek.filter(n=>potJeloltek.includes(n)));
+    const ws = new Set(nyertesek);
+    // Teljes lista: minden jelölt, rendezve
     const allRes = {...res};
     Object.entries(potRes).forEach(([k,v])=>{ allRes[k]=(allRes[k]||0)+v; });
-    const sorted = Object.entries(allRes).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const sorted = Object.entries(allRes).sort((a,b)=>b[1]-a[1]);
     const max = Math.max(...sorted.map(e=>e[1]),1);
-    const ws = new Set(nyertesek);
-    const potSet = new Set(potJeloltek);
 
-    // Holtverseny detektálás a lezáráskor
-    const tieAtClose = detectTie(sz);
-    const potszavazasKell = tieAtClose && !potRes.length;
+    R(`<div class="proj" style="padding:2rem;max-width:1000px;margin:0 auto">
+      <div style="font-size:32px;font-weight:700;margin-bottom:1.5rem">${sz.cim} — Végeredmény</div>
 
-    R(`<div class="proj"><div style="padding-top:2rem;max-width:900px;margin:0 auto">
-      <div style="font-size:28px;font-weight:700;margin-bottom:1.5rem">${sz.cim} — Végeredmény</div>
-      ${nyertesek.length?`<div style="font-size:22px;font-weight:600;color:#057a55;margin-bottom:1rem">✓ Bekerült${nyertesek.length>1?'ek':''}: ${nyertesek.join(', ')}</div>`:''}
-      ${potJeloltek.length?`<div style="font-size:20px;font-weight:600;color:#d97706;margin-bottom:1.5rem">⚡ Pótszavazás: ${potJeloltek.join(', ')}</div>`:''}
-      ${sorted.map(([n,c])=>{
-        const w=ws.has(n), p=potSet.has(n)&&!w;
-        return `<div style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:18px;font-weight:${w||p?'700':'400'};color:${w?'#057a55':p?'#d97706':'inherit'}">${w?'✓ ':p?'⚡ ':''}${n}</span>
-            <span style="font-size:18px;font-weight:600;color:${w?'#057a55':p?'#d97706':'#6b7280'}">${c}</span>
+      <!-- Bekerültek -->
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:18px;font-weight:600;color:#057a55;margin-bottom:10px">✓ Bekerültek</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${nyertesek.map(n=>`
+            <div style="padding:8px 16px;background:${potWinners.has(n)?'#fef3c7':'#d1fae5'};border-radius:8px;font-size:18px;font-weight:600;color:${potWinners.has(n)?'#92400e':'#065f46'}">
+              ${potWinners.has(n)?'⚡ ':'✓ '}${n}
+            </div>`).join('')}
+        </div>
+        ${potWinners.size?`<div style="font-size:13px;color:#9ca3af;margin-top:8px">⚡ = pótszavazással jutott be</div>`:''}
+      </div>
+
+      <!-- Teljes lista -->
+      <div style="font-size:16px;font-weight:600;color:#6b7280;margin-bottom:10px">Teljes eredmény</div>
+      ${sorted.slice(0,15).map(([n,c])=>{
+        const w=ws.has(n), pw=potWinners.has(n);
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:16px;font-weight:${w?'700':'400'};color:${w?(pw?'#92400e':'#065f46'):'inherit'}">${pw?'⚡ ':w?'✓ ':''}${n}</span>
+            <span style="font-size:16px;font-weight:600;color:${w?(pw?'#d97706':'#057a55'):'#9ca3af'}">${c}</span>
           </div>
-          <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
-            <div style="height:100%;background:${w?'#057a55':p?'#d97706':'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+          <div style="background:#e5e7eb;border-radius:4px;height:16px;overflow:hidden">
+            <div style="height:100%;background:${w?(pw?'#d97706':'#057a55'):'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
           </div>
         </div>`;
       }).join('')}
-    </div></div>`);
+    </div>${VER_TAG}`);
   }
 }
 
