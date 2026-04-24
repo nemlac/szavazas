@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.24';
+const VERSION = 'v1.1.25';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.24</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.25</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -283,8 +283,8 @@ function tabSzavazasok() {
     const s = list[id];
     const allapot = s.allapot || 'inaktiv';
     const isAktiv = DB.aktiv === id;
-    const badgeCls = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'}[allapot]||'b-gray';
-    const badgeText = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás',lezarva:'Lezárva',potszavazas:'Pótszavazás'}[allapot]||allapot;
+    const badgeCls = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple',lezarva_holtveny:'b-yellow',pot_eredmeny:'b-yellow'}[allapot]||'b-gray';
+    const badgeText = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás',lezarva:'Lezárva',potszavazas:'Pótszavazás',lezarva_holtveny:'Holtverseny',pot_eredmeny:'Pót eredmény'}[allapot]||allapot;
     return `<div class="szavazas-card${selectedSzavazasId===id?' active-card':''}" data-id="${id}" onclick="selectSz('${id}')">
       <div class="row">
         <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
@@ -437,8 +437,8 @@ function tabVezerles() {
   if (!sz) return '<div class="info">Válassz szavazást a Szavazások fülön!</div>';
 
   const allapot = sz.allapot || 'pre';
-  const badgeMap = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple'};
-  const labelMap = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás folyamatban',lezarva:'Lezárva',potszavazas:'Pótszavazás'};
+  const badgeMap = {inaktiv:'b-gray',pre:'b-gray',qr:'b-blue',szavazas:'b-green',lezarva:'b-red',potszavazas:'b-purple',lezarva_holtveny:'b-yellow',pot_eredmeny:'b-yellow'};
+  const labelMap = {inaktiv:'Inaktív',pre:'Előkészítés',qr:'QR aktív',szavazas:'Szavazás folyamatban',lezarva:'Lezárva',potszavazas:'Pótszavazás',lezarva_holtveny:'Holtverseny',pot_eredmeny:'Pót eredmény'};
   const isAktiv = DB.aktiv === selectedSzavazasId;
 
   const belep = Object.keys(sz.belepo||{}).length;
@@ -488,7 +488,21 @@ function tabVezerles() {
       ${allapot==='qr'?`<button class="btn btn-success btn-sm" onclick="setAllapot('szavazas')">Szavazás indítása</button>`:''}
       ${allapot==='szavazas'&&!tieInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasElonezet()">Lezárás</button>`:''}
       ${allapot==='szavazas'&&tieInfo?tieWarn:''}
+      ${allapot==='lezarva_holtveny'?`
+        <div class="warn" style="width:100%">
+          <h3>⚡ Holtverseny — eredmény a kivetítőn látszik</h3>
+          <p>Érintett jelöltek: <b>${tieInfo?.tied?.join(', ')||''}</b></p>
+          <div class="row">
+            <button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Pótszavazás indítása</button>
+            <button class="btn btn-outline btn-sm" onclick="lezaras(false)">Lezárás így</button>
+          </div>
+        </div>`:''}
       ${allapot==='potszavazas'&&!potInfo?`<button class="btn btn-danger btn-sm" onclick="lezarasPotElonezet()">Pótszavazás lezárása</button>`:''}
+      ${allapot==='pot_eredmeny'?`
+        <div class="warn" style="width:100%">
+          <h3>Pótszavazás eredménye látszik a kivetítőn</h3>
+          <button class="btn btn-success btn-sm" onclick="lezarasPot()">Végeredmény megjelenítése</button>
+        </div>`:''}
       ${allapot==='potszavazas'&&potInfo?`<div class="warn" style="width:100%"><h3>⚠️ Ismét holtverseny!</h3><p>${potInfo.tied.join(', ')}</p><div class="row"><button class="btn btn-warning btn-sm" onclick="startPotszavazas()">Új pótszavazás</button><button class="btn btn-outline btn-sm" onclick="lezarasPot(true)">Lezárás így</button></div></div>`:''}
       ${allapot==='lezarva'?`<button class="btn btn-success btn-sm" onclick="downloadEredmeny()">⬇ Eredmény letöltése</button>`:''}
       ${allapot!=='inaktiv'?`<button class="btn btn-danger btn-sm" onclick="resetSzavazas()">Inaktiválás</button>`:''}
@@ -567,26 +581,21 @@ window.setAllapot = async (a) => {
   }
   await update(ref(db,`szavazasok/${selectedSzavazasId}`), upd);
 };
-window.lezarasElonezet = () => {
+window.lezarasElonezet = async () => {
   const sz = getSzavazas(); if(!sz) return;
-  const res = sz.eredmenyek||{};
-  const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const top = sorted.map(([n,c])=>`${n}: ${c} szavazat`).join('\n');
-  const osszes = Object.values(res).reduce((a,b)=>a+b,0);
-  if (confirm(`Eredmény előnézet (top 5):\n\n${top}\n\nÖsszesen: ${osszes} szavazat\n\nBiztosan lezárod?`)) {
+  const tieInfo = detectTie(sz);
+  if (tieInfo) {
+    // Holtverseny - közbenső állapot: mutassuk az eredményt a kivetítőn
+    await update(ref(db,`szavazasok/${selectedSzavazasId}`), {allapot:'lezarva_holtveny'});
+  } else {
     lezaras(false);
   }
 };
 
-window.lezarasPotElonezet = () => {
+window.lezarasPotElonezet = async () => {
   const sz = getSzavazas(); if(!sz) return;
-  const res = sz.potEredmenyek||{};
-  const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]);
-  const top = sorted.map(([n,c])=>`${n}: ${c} szavazat`).join('\n');
-  const osszes = Object.values(res).reduce((a,b)=>a+b,0);
-  if (confirm(`Pótszavazás eredménye:\n\n${top}\n\nÖsszesen: ${osszes} szavazat\n\nBiztosan lezárod?`)) {
-    lezarasPot();
-  }
+  // Mutassuk a pótszavazás eredményét a kivetítőn
+  await update(ref(db,`szavazasok/${selectedSzavazasId}`), {allapot:'pot_eredmeny'});
 };
 
 window.lezaras = async (forceFirst=false) => {
@@ -599,8 +608,10 @@ window.lezaras = async (forceFirst=false) => {
 };
 window.startPotszavazas = async () => {
   const sz = getSzavazas(); if(!sz) return;
-  const res = sz.allapot==='potszavazas' ? (sz.potEredmenyek||{}) : (sz.eredmenyek||{});
-  const maxV = sz.allapot==='potszavazas' ? (sz.potSpotsNeeded||1) : (sz.maxValaszt||1);
+  const isPot = sz.allapot==='potszavazas';
+  const isHoltveny = sz.allapot==='lezarva_holtveny';
+  const res = isPot ? (sz.potEredmenyek||{}) : (sz.eredmenyek||{});
+  const maxV = isPot ? (sz.potSpotsNeeded||1) : (sz.maxValaszt||1);
   const tieInfo = detectTie({results:res, jeloltek:sz.jeloltek||[], maxValaszt:maxV});
   if (!tieInfo) return;
   const potRes = {}; tieInfo.tied.forEach(n=>potRes[n]=0);
@@ -616,6 +627,22 @@ window.startPotszavazas = async () => {
   });
 };
 window.lezarasPot = async (forceFirst=false) => {
+  // Ha pot_eredmeny állapotból hívják, egyszerűen lezárjuk
+  const sz2 = getSzavazas();
+  if (sz2?.allapot === 'pot_eredmeny') {
+    // Nyertesek számítása
+    const potRes = sz2.potEredmenyek||{};
+    const potSorted = Object.entries(potRes).sort((a,b)=>b[1]-a[1]);
+    const potWinners = potSorted.slice(0,sz2.potSpotsNeeded||1).map(e=>e[0]);
+    const origRes = sz2.eredmenyek||{};
+    const origSorted = Object.entries(origRes).sort((a,b)=>b[1]-a[1]);
+    const maxV = sz2.maxValaszt||1;
+    const cutoff = origSorted[maxV-1]?.[1]||0;
+    const definiteWinners = origSorted.filter(([,v])=>v>cutoff).map(e=>e[0]);
+    const nyertesek = [...new Set([...definiteWinners,...potWinners])];
+    await update(ref(db,`szavazasok/${selectedSzavazasId}`), { allapot:'lezarva', nyertesek });
+    return;
+  }
   const sz = getSzavazas(); if(!sz) return;
   const potRes = sz.potEredmenyek||{};
   const origRes = sz.eredmenyek||{};
@@ -978,6 +1005,65 @@ function renderKivetito() {
       </div>`);
     }
     setTimeout(()=>makeQR('proj-qr',mUrl,mutat?120:100),80);
+    return;
+  }
+
+  // HOLTVERSENY közbenső állapot - eredmény + pótszavazás jelzés
+  if (allapot==='lezarva_holtveny') {
+    const res = sz.eredmenyek||{};
+    const tieInfo = detectTie(sz);
+    const sorted = Object.entries(res).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const max = Math.max(...sorted.map(e=>e[1]),1);
+    const tiedSet = new Set(tieInfo?.tied||[]);
+    const maxV = sz.maxValaszt||1;
+    const definite = sorted.filter(([,v])=>v > sorted[maxV-1]?.[1]).map(([n])=>n);
+    const defSet = new Set(definite);
+
+    R(`<div class="proj"><div style="padding-top:2rem;max-width:900px;margin:0 auto">
+      <div style="font-size:28px;font-weight:700;margin-bottom:1rem">${sz.cim} — Eredmény</div>
+      ${defSet.size?`<div style="font-size:20px;font-weight:600;color:#057a55;margin-bottom:0.5rem">✓ Bekerültek: ${[...defSet].join(', ')}</div>`:''}
+      <div style="font-size:20px;font-weight:600;color:#d97706;margin-bottom:1.5rem">⚡ Pótszavazásra megy: ${tieInfo?.tied?.join(', ')||''}</div>
+      ${sorted.map(([n,c])=>{
+        const w=defSet.has(n), t=tiedSet.has(n);
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:18px;font-weight:${w||t?'700':'400'};color:${w?'#057a55':t?'#d97706':'inherit'}">${w?'✓ ':t?'⚡ ':''}${n}</span>
+            <span style="font-size:18px;font-weight:600;color:${w?'#057a55':t?'#d97706':'#6b7280'}">${c}</span>
+          </div>
+          <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
+            <div style="height:100%;background:${w?'#057a55':t?'#d97706':'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>${VER_TAG}</div>`);
+    return;
+  }
+
+  // PÓTSZAVAZÁS EREDMÉNYE közbenső állapot
+  if (allapot==='pot_eredmeny') {
+    const potRes = sz.potEredmenyek||{};
+    const potJeloltek = sz.potJeloltek||[];
+    const sorted = potJeloltek.map(n=>[n,potRes[n]||0]).sort((a,b)=>b[1]-a[1]);
+    const max = Math.max(...sorted.map(e=>e[1]),1);
+    const tieInfo2 = detectTie({results:potRes, jeloltek:potJeloltek, maxValaszt:sz.potSpotsNeeded||1});
+    const topPot = sorted.slice(0,sz.potSpotsNeeded||1).map(([n])=>n);
+
+    R(`<div class="proj"><div style="padding-top:2rem;max-width:900px;margin:0 auto">
+      <div style="font-size:28px;font-weight:700;margin-bottom:1rem">${sz.cim} — Pótszavazás eredménye</div>
+      ${topPot.length?`<div style="font-size:20px;font-weight:600;color:#057a55;margin-bottom:1.5rem">✓ Pótszavazáson bekerült: ${topPot.join(', ')}</div>`:''}
+      ${sorted.map(([n,c])=>{
+        const w=topPot.includes(n);
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:18px;font-weight:${w?'700':'400'};color:${w?'#057a55':'inherit'}">${w?'✓ ':''}${n}</span>
+            <span style="font-size:18px;font-weight:600;color:${w?'#057a55':'#6b7280'}">${c}</span>
+          </div>
+          <div style="background:#e5e7eb;border-radius:4px;height:20px;overflow:hidden">
+            <div style="height:100%;background:${w?'#057a55':'#d1d5db'};border-radius:4px;width:${Math.round(c/max*100)}%;transition:width .5s"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>${VER_TAG}</div>`);
     return;
   }
 
