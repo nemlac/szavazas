@@ -115,7 +115,7 @@ const db = getDatabase(fbApp);
 const auth = getAuth(fbApp);
 
 // ── Verzió ──
-const VERSION = 'v1.1.26';
+const VERSION = 'v1.1.27';
 
 // ── Routing ──
 const P = new URLSearchParams(window.location.search);
@@ -242,7 +242,7 @@ function renderAdmin() {
     <div class="row" style="margin-bottom:1rem">
       <div style="flex:1">
         <h1 style="margin:0">Admin</h1>
-        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.26</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">v1.1.27</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Kilépés</button>
     </div>
@@ -1049,7 +1049,7 @@ function renderKivetito() {
           ${potSorted.map(([n,c])=>`
             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fef3c7;border-radius:8px;margin-bottom:6px">
               <span style="font-size:18px;font-weight:600;color:#92400e">${n}</span>
-              ${vanPotEredmeny?`<span style="font-size:18px;font-weight:700;color:#d97706">${c}</span>`:''}
+              ${mutat && vanPotEredmeny?`<span style="font-size:18px;font-weight:700;color:#d97706">${c}</span>`:''}
             </div>`).join('')}
         </div>
         <!-- Jobb: QR -->
